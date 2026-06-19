@@ -1,0 +1,39 @@
+site_name: Hệ thống GIS — gClient & gServer
+site_description: Tài liệu kỹ thuật dự án GIS WebGIS sử dụng WCF + ExtJS + OpenLayers
+site_author: gClient Team
+
+theme:
+  name: material
+  language: vi
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: blue
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+
+nav:
+  - Tổng quan: index.md
+  - Bài toán & Giải pháp: problem.md
+  - Kiến trúc hệ thống: architecture.md
+  - Cơ sở dữ liệu: database.md
+  - Backend (gServer): backend.md
+  - Frontend (gClient): frontend.md
+  - Luồng dữ liệu: dataflow.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - tables
+  - attr_list
+  - md_in_html
+
+extra_javascript:
+  - https://unpkg.com/mermaid/dist/mermaid.min.js
