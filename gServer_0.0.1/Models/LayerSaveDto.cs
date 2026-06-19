@@ -1,23 +1,28 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
+using System.Runtime.Serialization;
 
 namespace gServer_0._0._1.Models
 {
-    public class Layer
+    [DataContract]
+    public class LayerSaveDto
     {
-        public int Id { get; set; } 
+        [DataMember]
+        public int Id { get; set; }
+        [DataMember]
         public string Name { get; set; }
+        [DataMember]
         public string Source { get; set; }
+        [DataMember]
         public string Description { get; set; }
+        [DataMember]
         public string LayerType { get; set; } = "POINT";
+        [DataMember]
         public bool IsVisible { get; set; } = true;
+        [DataMember]
         public double Opacity { get; set; } = 1.0;
+        [DataMember]
         public int MinZoom { get; set; } = 0;
+        [DataMember]
         public int MaxZoom { get; set; } = 22;
-        public LayerStyle Style { get; set; } = new LayerStyle();
-        public FeatureCollection Data { get; set; } = new FeatureCollection();
-        public Envelope Extent => Data?.BoundingBox;
     }
 }

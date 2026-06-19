@@ -1,0 +1,1 @@
+﻿<%@ Application Codebehind="Global.asax.cs" Inherits="gServer_0._0._1.Global" Language="C#" %>

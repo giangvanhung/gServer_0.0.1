@@ -1,0 +1,1 @@
+﻿<%@ ServiceHost Language="C#" Debug="true" Service="gServer_0._0._1.Services.LayerService" CodeBehind="Services/LayerService.cs" %>

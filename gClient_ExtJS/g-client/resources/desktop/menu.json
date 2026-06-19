@@ -1,0 +1,9 @@
+{
+  "leaf": false,
+  "children": [
+    { "text": "Home", "iconCls": "x-fa fa-home", "xtype": "homeview", "leaf": true },
+    { "text": "Edit Layers", "iconCls": "x-fa fa-table", "xtype": "LayerView","leaf": true },
+    { "text": "Map", "iconCls": "x-fa fa-map", "xtype": "mapPanel","leaf": true },
+    { "text": "Layers", "iconCls": "x-fa fa-layer-group", "xtype": "mapLayerDPHCC","leaf": true }
+  ]
+}
