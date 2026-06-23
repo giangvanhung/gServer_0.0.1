@@ -3,7 +3,6 @@ using System.Runtime.Serialization;
 
 namespace gServer_0._0._1.Models
 {
-
     [DataContract]
     public class FeatureBatchRequest
     {

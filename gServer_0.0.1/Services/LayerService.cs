@@ -116,29 +116,29 @@ namespace gServer_0._0._1.Services
                 return result;
             }
         }
-        public async Task<FeatureCollection> GetFeaturesByLayerIdAsync(string layerId)
+        public async Task<FeatureInfoCollection> GetInfoFeaturesByLayerIdAsync(string layerId)
         {
             try
             {
                 if (int.TryParse(layerId, out int intlayerId))
                 {
-                    return await _layerBLL.GetFeaturesByLayerIdAsync(intlayerId);
+                    return await _layerBLL.GetInfoFeaturesByLayerIdAsync(intlayerId);
                 }
                 throw new WebFaultException<string>("Id không hợp lệ", System.Net.HttpStatusCode.BadRequest);
             }
             catch (Exception ex)
             {
-                LogHelper.LogError($"[LayerService.GetFeaturesByLayerIdAsync] LayerId: {layerId}", ex);
-                return new FeatureCollection(); // trả collection rỗng thay vì crash
+                LogHelper.LogError($"[LayerService.GetInfoFeaturesByLayerIdAsync] LayerId: {layerId}", ex);
+                return new FeatureInfoCollection(); // trả collection rỗng thay vì crash
             }
         }
-        public async Task<Feature> GetFeaturesAsync(string featuresId)
+        public async Task<Feature> GetFeaturesGeometryAsync(string featuresId)
         {
             try
             {
                 if (int.TryParse(featuresId, out int intfeaturesId))
                 {
-                    return await _layerBLL.GetFeaturesAsync(intfeaturesId);
+                    return await _layerBLL.GetFeaturesGeometryAsync(intfeaturesId);
                 }
                 throw new WebFaultException<string>("Id không hợp lệ", System.Net.HttpStatusCode.BadRequest);
             }
@@ -163,6 +163,18 @@ namespace gServer_0._0._1.Services
 
             // Gọi đến hàm xử lý Query Helper gom cụm Id bạn vừa viết xong lúc nãy
             return await _layerBLL.GetFeaturesByListIdsAsync(request);
+        }
+
+        public async Task<Feature> GetFeaturesAsync(string id)
+        {
+            var fe = new Feature();
+            return fe;
+        }
+
+        public async Task<FeatureCollection> IdentifyAsync(IdentifyRequest request)
+        {
+            var feat = new FeatureCollection();
+            return feat;
         }
     }
 }
