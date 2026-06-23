@@ -48,6 +48,22 @@ Ext.define('gClient.view.EditLayer.LayerView', {
                 bind: {
                     disabled: '{!layerGrid.selection}' // Tự ẩn/hiện dựa trên việc có dòng nào được chọn không
                 }
+            },{
+                text: 'Thêm Feature',
+                iconCls: 'x-fa fa-plus',
+                ui: 'action',
+                handler: 'onAddFeature',
+                bind: {
+                    disabled: '{!layerGrid.selection}' // Tự ẩn/hiện dựa trên việc có dòng nào được chọn không
+                }
+            },{
+                text: 'Xem Features',
+                iconCls: 'x-fa fa-plus',
+                ui: 'action',
+                handler: 'onViewFeature',
+                bind: {
+                    disabled: '{!layerGrid.selection}' // Tự ẩn/hiện dựa trên việc có dòng nào được chọn không
+                }
             },
             '->',
             {

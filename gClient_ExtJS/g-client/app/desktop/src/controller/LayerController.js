@@ -45,6 +45,19 @@ Ext.define('gClient.controller.LayerController', {
             source: panel.vectorSource
         });
         panel.map.addLayer(vectorLayer);
+        panel.map.on('singleclick', function(evt) {
+
+            var feature = panel.map.forEachFeatureAtPixel(
+                evt.pixel,
+                function(feature) {
+                    return feature;
+                }
+            );
+
+            if (feature) {
+                console.log(feature.getProperties());
+            }
+        });
     },
 
     onMapResize: function (panel) {
@@ -84,7 +97,17 @@ Ext.define('gClient.controller.LayerController', {
                                 listeners: {
                                     checkchange: function(column, rowIndex, checked, record, e) {
                                         Ext.log("Thay đổi trạng thái record: " + record.getId() + " -> " + checked);
-                                        me.handleFeatureToggle(layerItem.Id, record);
+                                        var clickCoords = null;
+                                        if (e && typeof e.getXY === 'function') {
+                                            var xy = e.getXY(); // Trả về mảng [clientX, clientY]
+                                            
+                                            // CHÚ Ý: Nếu hệ thống bản đồ OpenLayers/Leaflet của bạn cần tọa độ EPSG:3857/4326,
+                                            // bạn phải dùng hàm chuyển đổi từ Pixel màn hình -> Toạ độ bản đồ.
+                                            // Ví dụ OpenLayers: clickCoords = me.mapPanelRef.getEventCoordinate(e.browserEvent);
+                                            // Dưới đây tạm thời truyền toạ độ XY của Event chuột:
+                                            clickCoords = xy; 
+                                        }
+                                        me.handleFeatureToggle(layerItem.Id, record, clickCoords);
                                     }
                                 }
                             },
@@ -119,7 +142,7 @@ Ext.define('gClient.controller.LayerController', {
         });
     },
 
-    handleFeatureToggle: function(layerId, record) {
+    handleFeatureToggle: function(layerId, record, clickCoords) {
         var me = this,
             featureId = record.getId(),
             isTicked = record.get('checked'),
@@ -138,7 +161,20 @@ Ext.define('gClient.controller.LayerController', {
 
         // 2. ĐÃ CÓ GEOM CACHE: Vẽ luôn từ bộ nhớ, không tốn tài nguyên gọi API
         if (record.get('Geom')) {
-            me.drawWktOnMap(record.get('Geom'), featureId);
+            var olFeature = me.drawWktOnMap(record.get('Geom'), featureId);
+            // if (clickCoords) {
+            //     me.zoomToLocation(clickCoords);
+            // } else if (record.get('BoundingBox')) {
+            //     me.zoomToBoundingBox(record.get('BoundingBox'));
+            // }
+            if (olFeature && olFeature.getGeometry()) {
+                var extent = olFeature.getGeometry().getExtent();
+
+                me.mapPanelRef.map.getView().fit(extent, {
+                    duration: 800,
+                    padding: [50,50,50,50]
+                });
+            }
             return;
         }
 
@@ -148,9 +184,22 @@ Ext.define('gClient.controller.LayerController', {
         }
         
         var layerQueue = me.globalPendingQueue[layerId];
-        if (!Ext.Array.contains(layerQueue, featureId)) {
-            layerQueue.push(featureId);
-            Ext.log("Hàng đợi Layer [" + layerId + "] tích lũy: [" + layerQueue.join(', ') + "]");
+        // if (!Ext.Array.contains(layerQueue, featureId)) {
+        //     layerQueue.push(featureId);
+        //     Ext.log("Hàng đợi Layer [" + layerId + "] tích lũy: [" + layerQueue.join(', ') + "]");
+        // }
+
+        var isExist = Ext.Array.some(layerQueue, function(item) {
+            return item.id === featureId;
+        });
+
+        if (!isExist) {
+            // ĐÓNG GÓI CẢ ID VÀ TỌA ĐỘ CLICK VÀO HÀNG ĐỢI
+            layerQueue.push({
+                id: featureId,
+                coords: clickCoords || null
+            });
+            Ext.log("Hàng đợi Layer [" + layerId + "] tích lũy thêm ID: " + featureId);
         }
 
         // Reset timer nếu người dùng đang click liên tục (Debounce)
@@ -169,17 +218,16 @@ Ext.define('gClient.controller.LayerController', {
                 me.globalPendingQueue[currentLayerId] = [];
 
                 if (totalPending === 1) {
-                    me.sendSingleGeometryRequest(idsToSubmit[0]);
-                } 
-                else if (totalPending >= 2) {
-                    me.sendBatchGeometryRequest(currentLayerId, idsToSubmit);
+                    me.sendSingleGeometryRequest(idsToSubmit[0].id, idsToSubmit[0].coords);
+                } else {
+                    me.sendBatchGeometryRequest(currentLayerId, Ext.Array.pluck(idsToSubmit, 'id'));
                 }
             });
         }, 400); // 400ms là khoảng thời gian vừa đủ để nhận diện click nhanh liên tục
     },
 
     // Gọi API GET đơn lẻ cho 1 Feature
-    sendSingleGeometryRequest: function(featureId) {
+    sendSingleGeometryRequest: function(featureId, clickCoords) {
         var me = this,
             baseUrl = gClient.app.getApiHost();
 
@@ -191,11 +239,28 @@ Ext.define('gClient.controller.LayerController', {
             success: function(response) {
                 var featureObj = Ext.decode(response.responseText);
                 if (featureObj && featureObj.GeomWkt) {
-                    me.drawWktOnMap(featureObj.GeomWkt, featureObj.Id);
+                    var olFeature = me.drawWktOnMap(featureObj.GeomWkt, featureObj.Id);
 
                     var storeRecord = me.findRecordInGrids(featureObj.Id);
                     if (storeRecord) {
                         storeRecord.set('Geom', featureObj.GeomWkt);
+                    }
+
+                    // if (clickCoords) {
+                    //     me.zoomToLocation(clickCoords);
+                    // } else {
+                    //     var extent = olFeature.getGeometry().getExtent();
+                    //     mapPanel.map.getView().fit(extent, {
+                    //         duration: 800
+                    //     });
+                    // }
+                    if (olFeature && olFeature.getGeometry()) {
+                        var extent = olFeature.getGeometry().getExtent();
+
+                        me.mapPanelRef.map.getView().fit(extent, {
+                            duration: 800,
+                            padding: [50,50,50,50]
+                        });
                     }
                 }
             }
@@ -293,6 +358,7 @@ Ext.define('gClient.controller.LayerController', {
 
         olFeature.setStyle(featureStyle);
         mapPanel.vectorSource.addFeature(olFeature);
+        return olFeature;
     },
 
     hexToRgba: function(hex, opacity) {

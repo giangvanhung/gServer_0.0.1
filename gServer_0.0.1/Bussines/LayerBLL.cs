@@ -232,12 +232,12 @@ namespace gServer_0._0._1.Bussines
             return result;
         }
 
-        public async Task<FeatureCollection> GetFeaturesByLayerIdAsync(int layerId)
+        public async Task<FeatureInfoCollection> GetInfoFeaturesByLayerIdAsync(int layerId)
         {
-            return await _layerRepository.GetFeaturesByLayerIdAsync(layerId);
+            return await _layerRepository.GetInfoFeaturesByLayerIdAsync(layerId);
         }
 
-        public async Task<Feature> GetFeaturesAsync(int featuresId)
+        public async Task<Feature> GetFeaturesGeometryAsync(int featuresId)
         {
             return await _layerRepository.GetFeatureGeometryAsync(featuresId);
         }

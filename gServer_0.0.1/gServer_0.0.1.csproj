@@ -104,8 +104,10 @@
     <Compile Include="Models\Feature.cs" />
     <Compile Include="Models\FeatureBatchRequest.cs" />
     <Compile Include="Models\FeatureCollection.cs" />
+    <Compile Include="Models\FeatureInfoCollection.cs" />
     <Compile Include="Models\GeoJsonModels.cs" />
     <Compile Include="Models\Geometry.cs" />
+    <Compile Include="Models\IdentifyRequest.cs" />
     <Compile Include="Models\LayerSaveDto.cs" />
     <Compile Include="Models\LayerListDto.cs" />
     <Compile Include="Models\Layer.cs" />

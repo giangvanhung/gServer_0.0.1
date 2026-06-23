@@ -209,9 +209,9 @@ namespace gServer_0._0._1.Repositories
         }
 
         // Thay async Task bằng Task hoặc plain method
-        public async Task<FeatureCollection> GetFeaturesByLayerIdAsync(int layerId)
+        public async Task<FeatureInfoCollection> GetInfoFeaturesByLayerIdAsync(int layerId)
         {
-            var result = new FeatureCollection();
+            var result = new FeatureInfoCollection();
 
             string sql = @"
             SELECT 

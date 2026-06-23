@@ -9,9 +9,9 @@ Ext.define('gClient.Application', {
 	defaultToken: 'homeview',
 	config: {
 		// Debug
-        // apiHost: 'http://localhost:52106',
+        apiHost: 'http://localhost:52106',
 		// IIS manager local
-		apiHost: 'http://localhost:56720',
+		// apiHost: 'http://localhost:56720',
     },
 
 	removeSplash: function () {
