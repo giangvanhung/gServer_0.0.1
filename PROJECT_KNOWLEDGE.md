@@ -1,17 +1,19 @@
 # gServer / gClient — Project Knowledge Base
 
-> Dùng file này để cung cấp ngữ cảnh cho AI (Claude, ChatGPT, Copilot…) khi hỏi về dự án.
+> Cung cấp ngữ cảnh đầy đủ cho AI hoặc developer mới khi làm việc với dự án này.
 
 ---
 
-## 1. Tổng quan kiến trúc
+## 1. Tổng quan dự án
 
-| Thành phần | Công nghệ | Mô tả |
+**gServer/gClient** là một ứng dụng **WebGIS** cho phép quản lý, hiển thị và chỉnh sửa dữ liệu không gian địa lý trên bản đồ.
+
+| Thành phần | Công nghệ | Vai trò |
 |---|---|---|
-| **Frontend** | ExtJS 8 Modern + OpenLayers 10 | SPA WebGIS chạy trên trình duyệt |
-| **Backend** | .NET Framework 4.x, WCF REST | Web service tại `LayerService.svc` |
-| **Database** | SQL Server | Dữ liệu không gian, GEOMETRY type |
-| **Build tool** | Sencha Cmd + webpack-dev-server | Dev port 1962, prod build ra `/build` |
+| **Frontend** | ExtJS 8 Modern + OpenLayers 10 | SPA WebGIS, vẽ/hiển thị bản đồ |
+| **Backend** | .NET Framework 4.5.1, WCF REST | REST API tại `LayerService.svc` |
+| **Database** | SQL Server (2016+) | Lưu dữ liệu không gian, kiểu `GEOMETRY`, SRID 4326 |
+| **Build** | Sencha Cmd | Dev port 1962, prod build → `/build` |
 
 **Dev URLs:**
 - Frontend: `http://localhost:1962`
@@ -22,64 +24,68 @@
 ## 2. Cấu trúc thư mục
 
 ```
-gServer_0.0.1/               ← Solution root
+gServer_0.0.1/                         ← Solution root
 ├── gClient_ExtJS/
-│   └── g-client/            ← ExtJS SPA
-│       ├── app.json          ← Sencha app config (framework: ext, toolkit: modern)
-│       ├── index.html        ← Entry HTML (OL CDN, popup CSS)
+│   └── g-client/
+│       ├── app.json                    ← Sencha config (toolkit: modern)
+│       ├── index.html                  ← Entry HTML (OL CDN, popup CSS)
 │       └── app/desktop/src/
 │           ├── Application.js          ← App entry, apiHost config
 │           ├── controller/
-│           │   └── LayerController.js  ← Map page controller
+│           │   ├── LayerController.js  ← Controller trang "Layers"
+│           │   └── MapController.js    ← Controller trang "Map" (đơn giản)
 │           ├── store/
-│           │   └── LayerStore.js       ← REST proxy store for layers
+│           │   └── LayerStore.js
 │           └── view/
-│               ├── main/               ← Shell: MainView, CenterView (card layout)
-│               ├── home/               ← Home page
-│               ├── map/                ← MapPanel (placeholder xtype)
-│               ├── LAYERS/             ← "Layers" page (LayerPanel.js)
-│               ├── Features/           ← FeatureStore, FeatureModel
-│               ├── EditLayer/          ← "Edit Layers" page
-│               │   ├── LayerView.js          ← Split panel (layers list + OL map)
-│               │   ├── EditLayerController.js ← Controller with draw + CRUD
-│               │   └── LayerViewController.js ← OLD, không dùng nữa
+│               ├── main/               ← Shell: MainView + CenterView (card layout)
+│               ├── home/               ← Trang chủ
+│               ├── map/                ← MapPanel (trang bản đồ đơn giản)
+│               ├── LAYERS/
+│               │   └── LayerPanel.js   ← Trang "Layers" (map-DPHCC + layers-DPHCC)
+│               ├── Features/
+│               │   ├── FeatureStore.js
+│               │   └── FeatureModel.js
+│               ├── EditLayer/
+│               │   ├── LayerView.js              ← Trang "Edit Layers" (split panel)
+│               │   └── EditLayerController.js    ← Controller với draw + CRUD
 │               ├── FeatureCRUD/
-│               │   └── FeatureCRUDPanel.js   ← Modal CRUD cho Feature
+│               │   └── FeatureCRUDPanel.js       ← Modal CRUD Feature (WKT + Properties)
 │               └── LayerCRUD/
-│                   └── LayerCRUDPanel.js     ← Modal CRUD cho Layer
+│                   └── LayerCRUDPanel.js         ← Modal CRUD Layer metadata
 │
-└── gServer_0.0.1/           ← .NET WCF backend
-    ├── IServices/
-    │   └── ILayerService.cs  ← Interface WCF contract
-    ├── Services/
-    │   └── LayerService.cs   ← Implementation
-    ├── Bussines/
-    │   └── LayerBLL.cs       ← Business logic / validation
-    ├── Repositories/
-    │   └── LayerRepository.cs ← SQL queries (ADO.NET / Dapper)
-    ├── Models/               ← C# POCOs
-    └── Create_Tables.sql     ← Schema: LAYERS, FEATURES, LAYERSTYLE
+└── gServer_0.0.1/                     ← .NET WCF backend
+    ├── IServices/ILayerService.cs     ← WCF contract (endpoints)
+    ├── Services/LayerService.cs       ← Implementation
+    ├── Bussines/LayerBLL.cs           ← Business logic / validation
+    ├── Repositories/LayerRepository.cs ← ADO.NET SQL queries
+    ├── Models/                        ← C# POCOs
+    └── Web.config                     ← DB connection string, log4net
 ```
 
 ---
 
 ## 3. Frontend — ExtJS 8 Modern
 
-### 3.1 Quy tắc quan trọng
+### 3.1 Quy tắc quan trọng (Modern vs Classic)
 
-| ĐÚNG (Modern toolkit) | SAI (Classic toolkit — không dùng) |
+| ĐÚNG — Modern toolkit | SAI — Classic (không dùng) |
 |---|---|
-| `Ext.Panel` với `floated: true, modal: true` | `Ext.window.Window` |
-| `Ext.field.Text` / `xtype: 'textfield'` | `Ext.form.field.Text` |
-| `Ext.field.TextArea` / `xtype: 'textareafield'` | `Ext.form.field.TextArea` |
-| `Ext.field.Select` / `xtype: 'selectfield'` | `Ext.form.field.ComboBox` |
-| `Ext.field.Checkbox` → `getChecked()` / `setChecked()` | `getValue()` trả bool không đáng tin |
+| `Ext.Panel` với `floated:true, modal:true` | `Ext.window.Window` |
+| `Ext.field.Text` / `xtype:'textfield'` | `Ext.form.field.Text` |
+| `Ext.field.TextArea` / `xtype:'textareafield'` | `Ext.form.field.TextArea` |
 | `Ext.grid.Grid` | `Ext.grid.Panel` |
-| `Ext.Toast` hoặc `Ext.toast({message, timeout})` | — |
+| `Ext.toast({ message, timeout })` | — |
+| `panel.getComponent(0)` | `panel.down('.cls')` (kém tin cậy hơn) |
+
+**File không dùng nữa:**
+- `EditLayer/LayerViewController.js` — thay bằng `EditLayerController.js`
+- `EditLayer/FeatureFormView.js` — dùng `Ext.form.Panel` (Classic), bỏ
+
+---
 
 ### 3.2 Navigation / Routing
 
-Menu → xtype mapping (`resources/desktop/menu.json`):
+Menu (`resources/desktop/menu.json`) → xtype mapping:
 
 ```json
 { "text": "Home",        "xtype": "homeview",      "leaf": true },
@@ -88,129 +94,212 @@ Menu → xtype mapping (`resources/desktop/menu.json`):
 { "text": "Layers",      "xtype": "mapLayerDPHCC",  "leaf": true }
 ```
 
-`MainViewController` lắng nghe `selectionchange` trên menu → `redirectTo(xtype)` → route → `centerview.add({ xtype })` → `centerview.setActiveItem(xtype)`.
+`MainViewController` bắt `selectionchange` → `redirectTo(xtype)` → `centerview.add({xtype})` → `centerview.setActiveItem(...)`.
 
-`CenterView` dùng `layout: 'card'`, mỗi trang là một card.
+`CenterView` dùng `layout: 'card'` — mỗi trang là một card.
 
-### 3.3 Application entry
+---
 
-`Application.js`:
+### 3.3 Application.js
+
 ```javascript
 controllers: ['MapController', 'LayerController'],
 config: {
-    apiHost: 'http://localhost:52106'   // ← đổi đây khi deploy
+    apiHost: 'http://localhost:52106'  // đổi khi deploy
 }
-// Gọi: gClient.app.getApiHost()
+// Gọi ở bất kỳ đâu: gClient.app.getApiHost()
 ```
 
-### 3.4 LayerController (trang "Layers" — xtype: mapLayerDPHCC)
+---
 
-**File:** `controller/LayerController.js`  
+### 3.4 Hai bản đồ — Kiến trúc quan trọng
+
+Có **2 map OpenLayers độc lập**, mỗi cái do một controller riêng quản lý:
+
+| Map | DOM id | Controller | Trang |
+|---|---|---|---|
+| Map chính | `#map-DPHCC` | `LayerController` | Trang "Layers" |
+| Map Edit | `#edit-layer-map` | `EditLayerController` | Trang "Edit Layers" |
+
+**Quy tắc:** Không bao giờ để một controller truy cập map của controller kia. Khi `FeatureCRUDPanel` cần vẽ lại (redraw), nó gọi callback được inject từ bên ngoài — không hard-code controller.
+
+---
+
+### 3.5 LayerController — Trang "Layers"
+
+**File:** `controller/LayerController.js`
+**Alias:** được khai báo trong `Application.js` controllers
 **Trigger:** `control` lắng nghe `panel[cls=map-DPHCC-cls]` và `panel[cls=layers-DPHCC-cls]`
 
 **State instance:**
 ```javascript
-mapPanelRef         // Ext panel chứa OL map
-layerFeatureIds     // { layerId: [featureId, ...] }  — tracking feature trên map
-layerToggleState    // { layerId: bool }               — layer đang hiện/ẩn
+mapPanelRef           // Ext Panel chứa OL map (map-DPHCC)
+layerFeatureIds       // { layerId: [featureId, ...] }
+layerToggleState      // { layerId: bool }
 highlightedFeatureId
-layerStores         // { layerId: FeatureStore }       — để reload sau CRUD
-featureCRUDPanel    // singleton FeatureCRUDPanel
-layerCRUDPanel      // singleton LayerCRUDPanel
+layerStores           // { layerId: FeatureStore }
+featureCRUDPanel      // singleton FeatureCRUDPanel
+layerCRUDPanel        // singleton LayerCRUDPanel
 currentDrawLayerId / currentDrawLayerName
-layerList           // cache layers cho draw toolbar dropdown
+layerList             // cache layers cho draw toolbar dropdown
 ```
 
 **Luồng chính:**
-1. `getLayers()` → GET /layers → tạo `Ext.grid.Grid` cho mỗi layer (4 tools: eye / pencil / edit / trash)
-2. Eye tool → `toggleLayerOnMap()` → POST /features-batch → `drawWktOnMap()`
+1. `getLayers()` → GET /layers → build UI grid cho mỗi layer (4 nút: eye / feature / edit / trash)
+2. Eye → `toggleLayerOnMap()` → POST /features-batch → `drawWktOnMap()`
 3. Row tap → `onFeatureRowTap()` → GET /features/{id}/geometry → popup + zoom
-4. Click map rỗng → `identifyAtCoordinate()` → POST /identify → popup
-5. Pencil tool → `openFeatureCRUD()` → `FeatureCRUDPanel.loadLayer()`
-6. Edit/Trash tool → `openLayerCRUD()` / `onLayerDeleteClick()`
-7. Draw toolbar → `startDraw(type)` → `ol.interaction.Draw` → `drawend` → WKT → `openFeatureCRUDWithWkt()`
+4. Click bản đồ rỗng → `identifyAtCoordinate()` → POST /identify → popup
+5. Feature button → `openFeatureCRUD()` → `FeatureCRUDPanel.loadLayer()`
+6. Edit/Trash → `openLayerCRUD()` / `onLayerDeleteClick()`
+7. Draw toolbar → `startDraw(mapPanel, type, onDrawEnd?)` → `drawend` → WKT → `openFeatureCRUDWithWkt()`
 
-### 3.5 EditLayerController (trang "Edit Layers" — xtype: LayerView)
+**`startDraw(mapPanel, type, onDrawEnd?)`:**
+- Tham số `onDrawEnd` là optional callback `(wkt) => void`
+- Nếu có: gọi `onDrawEnd(wkt)` thay vì mở FeatureCRUDPanel (dùng cho "Vẽ lại")
+- Nếu không có: mở `openFeatureCRUDWithWkt()` như bình thường
 
-**File:** `view/EditLayer/EditLayerController.js`  
+**`startDrawForUpdate(drawType, onWktReady)`:**
+- Gọi `startDraw(mapPanel, drawType, onWktReady)`
+- Dùng khi `FeatureCRUDPanel` cần vẽ lại geometry của feature đang sửa
+
+---
+
+### 3.6 EditLayerController — Trang "Edit Layers"
+
+**File:** `view/EditLayer/EditLayerController.js`
 **Alias:** `controller.editlayervc`
+**View:** `LayerView.js` (xtype: `LayerView`)
 
-Trang chia đôi: **trái = grid layers**, **phải = OL map vẽ**.
+Trang chia đôi: **trái = grid layers**, **phải = OL map `#edit-layer-map`**
 
-**Luồng vẽ feature:**
-1. Grid load → GET /layers → hiện danh sách
-2. Chọn row layer → `setCurrentLayer()` → kích hoạt nút vẽ (grayed → blue)
-3. Click ◉/╱/▣ → `startDraw(type)` → cursor crosshair
-4. Vẽ xong (`drawend`) → `ol.format.WKT().writeFeature()` → chuỗi WKT text
-5. `openFeatureCRUDWithWkt()` → `FeatureCRUDPanel` mở, WKT tự điền vào form
-6. User nhập properties → Lưu → POST hoặc PUT API
-
-**Toolbar actions:** Thêm Layer / Sửa / Xóa / Quản lý Feature / Tải lại
-
-### 3.6 FeatureCRUDPanel
-
-**File:** `view/FeatureCRUD/FeatureCRUDPanel.js`  
-**Xtype:** `featurecrudpanel` | **Controller alias:** `featurecrudvc`  
-**Pattern:** Singleton — tạo 1 lần, gọi `loadLayer()` để đổi context
-
-**API:**
+**State instance (trên `me`):**
 ```javascript
-vc.loadLayer(layerId, layerName, apiHost, onAfterChangeCb)
-// onAfterChangeCb(action, featureId, data, layerId)
-// action: 'add' | 'update' | 'delete'
+olMap             // ol.Map instance
+vectorSource      // ol.source.Vector (features đã lưu)
+drawSource        // ol.source.Vector (preview khi vẽ)
+drawInteraction   // ol.interaction.Draw hiện tại
+drawButtons       // { type: { el, base, active, disabled } }
+finishBtn         // DOM button "✔ Hoàn thành" — reference lưu trên me
+activeDrawType    // 'Point' | 'LineString' | 'Polygon' | null
+currentLayerId / currentLayerName / currentLayerRecord
+featureCRUDPanel / layerCRUDPanel  // singletons
 ```
 
-**Layout:** `hbox` — trái: grid features (Id + Properties), phải: form (WKT textarea + dynamic key-value rows)
+**Luồng vẽ feature mới:**
+1. Grid load → GET /layers
+2. Chọn row → `activateDrawForLayer()` → nút vẽ sáng
+3. Click ◉/╱/▣ → `startDraw(type)` → cursor crosshair
+4. **LineString/Polygon:** hiện nút `✔ Hoàn thành` → user click → `drawInteraction.finishDrawing()` → `drawend`
+5. **Point:** single click → `drawend` tự động
+6. `drawend` → WKT → `openFeatureCRUDWithWkt()` → FeatureCRUDPanel mở
 
-**Cách thu thập properties:**
+**`startDraw(type, onDrawEnd?)`:**
+- Tham số `onDrawEnd` optional — cùng pattern với `LayerController`
+- Sau khi `me.stopDraw()`, gọi `onDrawEnd(wkt)` nếu có, hoặc `openFeatureCRUDWithWkt()` nếu không
+
+**`startDrawForUpdate(drawType, onWktReady)`:**
+- Gọi `this.startDraw(drawType, onWktReady)`
+- Toast "Vẽ hình học mới..."
+
+**Toolbar vẽ quan trọng:**
+- `me.finishBtn` — DOM button, `display:none` lúc bình thường, `display:inline-block` khi vẽ LineString/Polygon
+- `me.drawButtons` — map `{ 'Point': {el, base, active, disabled}, ... }`
+
+---
+
+### 3.7 FeatureCRUDPanel
+
+**File:** `view/FeatureCRUD/FeatureCRUDPanel.js`
+**Xtype:** `featurecrudpanel` | **Controller alias:** `featurecrudvc`
+**Pattern:** Singleton — tạo 1 lần, đổi context bằng `loadLayer()`
+
+**API của ViewController:**
+```javascript
+vc.loadLayer(layerId, layerName, apiHost, onAfterChange, onRequestRedraw)
+// onAfterChange(action, featureId, data, layerId) — 'add'|'update'|'delete'
+// onRequestRedraw(drawType, callback) — được inject từ controller cha
+//   drawType: 'Point'|'LineString'|'Polygon'
+//   callback(wkt) — được gọi sau khi vẽ xong
+```
+
+**Redraw flow (Vẽ lại geometry):**
+1. User chọn feature đang sửa → click nút "Vẽ lại: ◉/╱/▣"
+2. `onRedrawClick(btn)` → lấy `btn.drawType` → gọi `view.onRequestRedraw(drawType, cb)`
+3. Panel tự `hide()`
+4. Controller cha vẽ trên map → `drawend` → `cb(wkt)` được gọi
+5. Panel tự `show()`, `geomField.setValue(wkt)`
+6. User nhấn "Lưu" → PUT /features/{id}
+
+**Layout:** `hbox` — trái: grid features, phải: form (WKT + dynamic properties)
+
+**Thu thập properties:**
 ```javascript
 propsContainer.getItems().each(function(row) {
-    var k = row.down('.crud-key-field').getValue().trim();
-    var v = row.down('.crud-val-field').getValue();
+    var k = row.getComponent(0).getValue().trim();
+    var v = row.getComponent(1).getValue();
     if (k) properties[k] = v;
 });
 ```
 
-### 3.7 LayerCRUDPanel
-
-**File:** `view/LayerCRUD/LayerCRUDPanel.js`  
-**Xtype:** `layercrudpanel` | **Controller alias:** `layercrudvc`
-
-**API:**
+**State trên `view`:**
 ```javascript
-vc.loadLayer(layerData, apiHost, onAfterChangeCb)
-// layerData = null → thêm mới; layerData = { Id, Name, LayerType, ... } → sửa
+view.currentLayerId
+view.currentApiHost
+view.editingFeatureId   // null = thêm mới, có giá trị = đang sửa
+view.onAfterChange      // callback → notify controller cha
+view.onRequestRedraw    // callback → delegate vẽ map về controller cha
 ```
 
-**Fields:** Tên, Mô tả, Loại hình học (select: POINT/LINESTRING/POLYGON), Hiển thị mặc định, Độ mờ
+---
 
-### 3.8 OpenLayers 10 integration
+### 3.8 LayerCRUDPanel
 
-OL được load từ CDN trong `index.html`:
+**File:** `view/LayerCRUD/LayerCRUDPanel.js`
+**Xtype:** `layercrudpanel` | **Controller alias:** `layercrudvc`
+
+```javascript
+vc.loadLayer(layerData, apiHost, onAfterChangeCb)
+// layerData = null → thêm mới; layerData = {...} → sửa
+```
+
+Fields: Tên, Mô tả, Loại hình học (POINT/LINESTRING/POLYGON), Hiển thị mặc định, Độ mờ
+
+---
+
+### 3.9 OpenLayers 10 — Tích hợp
+
+Load từ CDN trong `index.html`:
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.1.0/ol.css">
+<link href="https://cdn.jsdelivr.net/npm/ol@v10.1.0/ol.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/ol@v10.1.0/dist/ol.js"></script>
 ```
 
-**Map targets (DOM id):**
-- Trang Layers: `map-DPHCC`
-- Trang Edit Layers: `edit-layer-map`
-
 **Pattern draw + extract WKT:**
 ```javascript
-var interaction = new ol.interaction.Draw({ source: drawSource, type: 'Point' });
+var interaction = new ol.interaction.Draw({ source: drawSource, type: type });
 interaction.on('drawend', function(e) {
     var wkt = new ol.format.WKT().writeFeature(e.feature, {
         dataProjection: 'EPSG:4326',
         featureProjection: map.getView().getProjection()
     });
-    // wkt = "POINT (105.845 21.028)"  ← text thuần, không phải ảnh
+    // wkt = "LINESTRING (105.8 21.0, 105.9 21.1)"
 });
 ```
 
-**Draw modes:** `Point` | `LineString` | `Polygon`
+**Kết thúc vẽ:**
+- **Point:** single click → `drawend` tự fire
+- **LineString/Polygon:** cần **double-click** hoặc gọi `drawInteraction.finishDrawing()` để trigger `drawend`
 
-**Vấn đề singleclick sau Point draw:** Sau khi drawend, OL vẫn fire singleclick. Fix bằng flag `drawJustEnded = true` → clear sau 350ms.
+**WKT → render lên map:**
+```javascript
+var fmt  = new ol.format.WKT();
+var feat = fmt.readFeature(wktString, {
+    dataProjection: 'EPSG:4326',
+    featureProjection: map.getView().getProjection()
+});
+feat.setId(featureId);
+vectorSource.addFeature(feat);
+```
 
 ---
 
@@ -220,58 +309,66 @@ interaction.on('drawend', function(e) {
 
 **Base URL:** `http://localhost:52106/LayerService.svc`
 
-| Method | URL | Body | Response | Mô tả |
+| Method | Path | Body / Params | Response | Mô tả |
 |---|---|---|---|---|
 | GET | `/layers` | — | `ServiceResult<LayerListDto[]>` | Danh sách layer |
-| POST | `/layers` | `LayerSaveDto` | `ServiceResult<LayerSaveDto>` | Tạo layer mới |
-| PUT | `/layers/{Id}` | `LayerSaveDto` | `ServiceResult<int>` | Cập nhật layer |
+| POST | `/layers` | `LayerSaveDto` | `ServiceResult<LayerSaveDto>` | Tạo layer |
+| PUT | `/layers/{Id}` | `LayerSaveDto` | `ServiceResult<int>` | Sửa layer |
 | DELETE | `/layers/{Id}` | — | `ServiceResult<int>` | Xóa layer + features |
-| GET | `/layers/{layerId}/features` | — | `FeatureInfoCollection` | Danh sách features (chỉ Id + Properties, không Geom) |
-| POST | `/layers/{layerId}/features` | `Feature` | `ServiceResult<int>` | Thêm feature mới |
-| PUT | `/features/{id}` | `Feature` | `ServiceResult<int>` | Sửa feature |
+| GET | `/layers/{layerId}/features` | — | `FeatureInfoCollection` | Danh sách features (Id + Properties, không Geom) |
+| POST | `/layers/{layerId}/features` | `FeatureRequest` | `ServiceResult<int>` | Thêm feature |
+| PUT | `/features/{id}` | `FeatureRequest` | `ServiceResult<int>` | Sửa feature |
 | DELETE | `/features/{id}` | — | `ServiceResult<int>` | Xóa feature |
 | GET | `/features/{id}` | — | `Feature` | Feature đầy đủ (Geom + Properties) |
-| GET | `/features/{featureId}/geometry` | — | `Feature` | Chỉ lấy Geom (không Properties) |
-| POST | `/layers/{layerId}/features-batch` | `{featureIds:[1,2,3]}` | `FeatureCollection` + BoundingBox | Nhiều features theo ID |
-| POST | `/identify` | `{lon, lat}` | `FeatureCollection` | Tìm features tại tọa độ click |
+| GET | `/features/{id}/geometry` | — | `Feature` | Chỉ Geom (không Properties) |
+| POST | `/layers/{layerId}/features-batch` | `{featureIds:[1,2,3]}` | `FeatureCollection` | Nhiều features theo ID |
+| POST | `/identify` | `{lon, lat}` | `FeatureCollection` | Features tại tọa độ click |
 | POST | `/layers/{layerId}/features/import` | `FeatureCollection` | `ServiceResult<bool>` | Bulk import |
 
-**Headers bắt buộc:** `Content-Type: application/json`, `Accept: application/json`
+**Lưu ý quan trọng:** Server luôn trả HTTP 200. FE phải kiểm tra `result.Success` trong body JSON.
 
-**Lưu ý:** Server luôn trả HTTP 200. FE phải kiểm tra `result.Success` trong body.
+---
 
 ### 4.2 Models C#
 
 ```csharp
-// ServiceResult<T> — wrapper cho mọi response
-{ bool Success, string Message, T Data }
+// Wrapper chung cho mọi API response
+ServiceResult<T> { bool Success, string Message, T Data }
 
-// Feature — đơn vị dữ liệu không gian
-{ string Id, string GeomWkt, Dictionary<string,object> Properties }
+// Feature đầy đủ
+Feature { string Id, string GeomWkt, Dictionary<string,object> Properties }
 
-// LayerListDto — dùng GET /layers
-{ int Id, string Name, string LayerType, bool IsVisible }
+// Request thêm/sửa feature
+FeatureRequest { string Id, string GeomWkt, string Properties }  // Properties = JSON string
 
-// LayerSaveDto — dùng POST/PUT /layers
-{ int Id, string Name, string Source, string Description,
-  string LayerType, bool IsVisible, float Opacity, int MinZoom, int MaxZoom }
+// Layer list (GET /layers)
+LayerListDto { int Id, string Name, string LayerType, bool IsVisible }
 
-// FeatureCollection
-{ string Type, Feature[] Features, BoundingBox BoundingBox }
+// Layer save (POST/PUT /layers)
+LayerSaveDto { int Id, string Name, string Source, string Description,
+               string LayerType, bool IsVisible, float Opacity, int MinZoom, int MaxZoom }
 
-// IdentifyRequest
-{ double lon, double lat }
+// Collection
+FeatureCollection { string Type, List<Feature> Features, BoundingBox BoundingBox }
+FeatureInfoCollection { List<FeatureInfo> Features }
+
+// Spatial query
+IdentifyRequest { double lon, double lat }
+FeatureBatchRequest { List<int> FeatureIds }
+BoundingBox { double MinLon, MinLat, MaxLon, MaxLat }
 ```
 
-### 4.3 Database Schema (SQL Server)
+---
+
+### 4.3 Database Schema
 
 ```sql
 LAYERS (
-    Id          INT IDENTITY PK,
-    Name        NVARCHAR(150) NOT NULL,
+    Id          INT IDENTITY PRIMARY KEY,
+    Name        NVARCHAR(150) NOT NULL UNIQUE,
     Source      VARCHAR(200),
     Description NVARCHAR(200),
-    LayerType   VARCHAR(10)  -- 'POINT' | 'LINESTRING' | 'POLYGON'
+    LayerType   VARCHAR(10),    -- 'POINT' | 'LINESTRING' | 'POLYGON'
     IsVisible   BIT DEFAULT 1,
     Opacity     FLOAT DEFAULT 1.0,
     MinZoom     INT DEFAULT 0,
@@ -279,16 +376,16 @@ LAYERS (
 )
 
 FEATURES (
-    Id          INT IDENTITY PK,
-    LayerId     INT FK → LAYERS(Id) ON DELETE CASCADE,
-    Geom        GEOMETRY NOT NULL,         -- SQL Server spatial type
-    Properties  NVARCHAR(MAX)              -- JSON: {"key":"value",...}
+    Id          INT IDENTITY PRIMARY KEY,
+    LayerId     INT FOREIGN KEY → LAYERS(Id) ON DELETE CASCADE,
+    Geom        GEOMETRY NOT NULL,       -- SQL Server spatial, SRID 4326
+    Properties  NVARCHAR(MAX)            -- JSON: {"key":"value",...}
 )
--- Spatial index: BOUNDING_BOX = (100, 8, 110, 24)  ← phủ Việt Nam
+-- Spatial index: BOUNDING_BOX = (100, 8, 110, 24)  ← phủ toàn Việt Nam
 
 LAYERSTYLE (
-    Id          INT IDENTITY PK,
-    LayerId     INT FK → LAYERS(Id) ON DELETE CASCADE,
+    Id          INT IDENTITY PRIMARY KEY,
+    LayerId     INT FOREIGN KEY → LAYERS(Id) ON DELETE CASCADE,
     FillColor   CHAR(10) DEFAULT '#3399CC',
     StrokeColor CHAR(10) DEFAULT '#FFFFFF',
     StrokeWidth FLOAT DEFAULT 1.5,
@@ -296,93 +393,106 @@ LAYERSTYLE (
 )
 ```
 
-**WKT → DB:** `geometry::STGeomFromText(@GeomWkt, 4326)`  
-**DB → WKT:** `Geom.STAsText()`  
-**SRID:** 4326 (WGS84 lat/lon)
-
-### 4.4 Layer BLL / Repository pattern
-
-```
-Controller (ILayerService) → BLL (LayerBLL) → Repository (LayerRepository) → SQL Server
-```
-
-- `LayerBLL.cs`: validation, business rules (kiểm tra tên trùng, parse ID…)
-- `LayerRepository.cs`: ADO.NET / SQL thuần, async methods
-- Properties được serialize/deserialize bằng `Newtonsoft.Json`:
-  ```csharp
-  JsonConvert.SerializeObject(properties)         // lưu
-  JsonConvert.DeserializeObject<Dictionary<string,object>>(json)  // đọc
-  ```
+**WKT → DB:** `geometry::STGeomFromText(@GeomWkt, 4326)`
+**DB → WKT:** `Geom.STAsText()`
+**SRID:** 4326 (WGS84 lon/lat)
 
 ---
 
-## 5. Dữ liệu hình học — Nguyên tắc WKT
+### 4.4 Kiến trúc backend (3-tier)
 
-Mọi geometry giao tiếp dưới dạng **chuỗi text WKT** (Well-Known Text), không phải ảnh hay binary.
+```
+ILayerService (contract/endpoints)
+    ↓
+LayerService (implementation — validate input, parse id, gọi BLL)
+    ↓
+LayerBLL (business logic — kiểm tra trùng tên, rule nghiệp vụ)
+    ↓
+LayerRepository (ADO.NET SQL queries thuần, async)
+    ↓
+SQL Server
+```
+
+**Properties serialization:**
+```csharp
+// Lưu vào DB
+JsonConvert.SerializeObject(properties)
+
+// Đọc từ DB
+JsonConvert.DeserializeObject<Dictionary<string,object>>(json)
+// Hoặc parse JObject khi cần dynamic
+```
+
+---
+
+## 5. Dữ liệu không gian — WKT
+
+Mọi geometry giao tiếp bằng **chuỗi WKT** (Well-Known Text) — không dùng binary hay ảnh.
 
 ```
 POINT (105.845 21.028)
-LINESTRING (105.8 21.0, 105.9 21.1)
+LINESTRING (105.8 21.0, 105.9 21.1, 105.85 21.05)
 POLYGON ((105.80 21.00, 105.85 21.00, 105.85 21.05, 105.80 21.05, 105.80 21.00))
 ```
 
-Thứ tự tọa độ: **longitude (X) trước, latitude (Y) sau** (theo chuẩn OGC WKT + GeoJSON).
+**Thứ tự tọa độ:** longitude (X) trước, latitude (Y) sau — theo chuẩn OGC WKT.
+
+**SRID:** Luôn dùng EPSG:4326 (WGS84) cho cả frontend và backend.
 
 ---
 
-## 6. Luồng tương tác điển hình
+## 6. Luồng tương tác đầy đủ
 
-### Thêm Feature mới bằng vẽ trên bản đồ
-
-```
-1. Vào trang "Edit Layers" (menu)
-2. Chọn layer từ danh sách bên trái → nút vẽ sáng lên
-3. Click ◉/╱/▣ → cursor crosshair
-4. Vẽ trên bản đồ (click = điểm, click nhiều điểm + double-click = đường/vùng)
-5. drawend → WKT tự động điền vào FeatureCRUDPanel
-6. Nhập key-value properties → Lưu
-7. POST /layers/{layerId}/features → { Id, GeomWkt, Properties }
-```
-
-### Xem Feature trên bản đồ (trang Layers)
+### 6.1 Thêm Feature mới bằng vẽ (trang Edit Layers)
 
 ```
-1. Vào trang "Layers"
-2. Eye icon trên layer grid → load tất cả features lên map (batch)
+1. Menu → "Edit Layers" → LayerView (EditLayerController)
+2. Grid tự load GET /layers
+3. Chọn row layer → nút vẽ sáng lên (disabled → enabled)
+4. Click ◉ Điểm / ╱ Đường / ▣ Vùng → startDraw(type)
+   - Point: click 1 lần → drawend
+   - LineString/Polygon: click nhiều điểm → click "✔ Hoàn thành" → finishDrawing() → drawend
+5. drawend → WKT extracted → openFeatureCRUDWithWkt(layerId, name, wkt)
+6. FeatureCRUDPanel mở, WKT tự điền vào geomField
+7. Nhập key-value properties → Lưu
+8. POST /layers/{layerId}/features → { GeomWkt, Properties }
+9. onAfterChange('add', ...) → reload store
+```
+
+### 6.2 Sửa Geometry Feature (Vẽ lại — trang bất kỳ)
+
+```
+1. Mở FeatureCRUDPanel, chọn feature từ grid → form load dữ liệu
+2. Click "Vẽ lại: ◉/╱/▣" trong form
+3. onRedrawClick(btn) → view.onRequestRedraw(drawType, cb)
+4. FeatureCRUDPanel tự hide()
+5. Controller cha (LayerController hoặc EditLayerController) gọi startDrawForUpdate()
+6. User vẽ trên map → drawend → cb(wkt) được gọi
+7. FeatureCRUDPanel show() lại, geomField.setValue(wkt)
+8. Click "Lưu" → PUT /features/{id}
+9. onAfterChange('update', ...) → drawWktOnMap() cập nhật hình trên map
+```
+
+### 6.3 Xem Feature trên bản đồ (trang Layers)
+
+```
+1. Menu → "Layers" → LayerPanel (LayerController)
+2. Eye icon → toggleLayerOnMap() → POST /features-batch → drawWktOnMap() từng feature
 3. Click feature trên map → popup properties + highlight grid row
 4. Click row trong grid → zoom to + popup
-5. Click map rỗng → POST /identify → popup nearest feature
+5. Click map rỗng → POST /identify → popup feature gần nhất
 ```
 
 ---
 
-## 7. Patterns & Anti-patterns thường gặp
-
-### Tạo modal panel (Modern toolkit)
-```javascript
-// ĐÚNG
-Ext.create('gClient.view.FeatureCRUD.FeatureCRUDPanel')
-// Panel có: floated: true, modal: true, centered: true, closeAction: 'hide'
-
-// SAI — Classic only
-Ext.create('Ext.window.Window', { ... })
-```
-
-### Lookup trong ViewController
-```javascript
-// Dùng reference trong view config
-{ xtype: 'textfield', reference: 'myField' }
-
-// Trong ViewController
-var field = this.lookup('myField');  // trả về component hoặc null
-```
+## 7. Patterns & Gotchas
 
 ### Ajax request chuẩn
 ```javascript
 Ext.Ajax.request({
-    url: gClient.app.getApiHost() + '/LayerService.svc/layers',
+    url: gClient.app.getApiHost() + '/LayerService.svc/...',
     method: 'POST',
-    jsonData: { Name: 'Test', LayerType: 'POINT', ... },
+    jsonData: { ... },
     success: function(response) {
         var result = Ext.decode(response.responseText);
         if (result.Success) { ... }
@@ -396,55 +506,92 @@ Ext.Ajax.request({
 
 ### Singleton panel pattern
 ```javascript
-// Tạo 1 lần, đổi context bằng method load
 if (!me.featureCRUDPanel) {
     me.featureCRUDPanel = Ext.create('gClient.view.FeatureCRUD.FeatureCRUDPanel');
 }
-me.featureCRUDPanel.getController().loadLayer(layerId, layerName, apiHost, callback);
+me.featureCRUDPanel.getController().loadLayer(layerId, layerName, apiHost, cb, redrawCb);
 ```
 
-### Draw → WKT (không bao giờ dùng ảnh)
+### Inject redraw callback (không hard-code controller)
 ```javascript
-var wkt = new ol.format.WKT().writeFeature(e.feature, {
-    dataProjection: 'EPSG:4326',
-    featureProjection: map.getView().getProjection()
-});
-// "POINT (105.845 21.028)" — text thuần gửi thẳng lên server
+// Trong LayerController hoặc EditLayerController:
+me.featureCRUDPanel.getController().loadLayer(
+    layerId, layerName, apiHost,
+    function(action, fid, data, lId) { me.onFeatureCRUDChange(action, fid, data, lId); },
+    function(drawType, cb) { me.startDrawForUpdate(drawType, cb); }  // ← redraw hook
+);
+```
+
+### finishBtn — kết thúc LineString/Polygon
+```javascript
+// Lưu ref trên me (không phải mapPanel)
+me.finishBtn = finishBtn;
+
+// Trong startDraw:
+if (me.finishBtn) {
+    me.finishBtn.style.display = (type === 'Point') ? 'none' : 'inline-block';
+}
+
+// Trong stopDraw:
+if (me.finishBtn) {
+    me.finishBtn.style.display = 'none';
+}
+
+// onclick:
+if (me.drawInteraction) {
+    me.drawInteraction.finishDrawing(); // triggers drawend
+}
+```
+
+### drawend + singleclick conflict (Point)
+```javascript
+// Sau drawend, OL vẫn fire singleclick trên cùng click đó
+mapPanel.drawJustEnded = true;
+setTimeout(function() { mapPanel.drawJustEnded = false; }, 350);
+// Trong singleclick handler: if (panel.drawJustEnded) return;
+```
+
+### Properties format — 2 format từ server
+```javascript
+// Server có thể trả Array [{Key,Value}] hoặc Object {key:value}
+// FE xử lý cả 2 trong showOlPopup() và loadFeatureIntoForm()
+if (Array.isArray(properties)) {
+    properties.forEach(function(item) { /* item.Key, item.Value */ });
+} else {
+    Object.keys(properties).forEach(function(k) { /* k, properties[k] */ });
+}
 ```
 
 ---
 
-## 8. File nhanh — khi cần sửa gì
+## 8. Vấn đề đã biết
 
-| Cần làm | Sửa file |
+| # | Vấn đề | Giải thích |
+|---|---|---|
+| 1 | `Ext.Toast` vs `Ext.toast` | `Ext.Toast` = class, `Ext.toast({...})` = helper. Dùng lowercase `Ext.toast`. |
+| 2 | `Ext.window.Window` không tồn tại | Modern toolkit không có Window. Dùng `Ext.Panel` floated + modal. |
+| 3 | `LayerViewController.js` không dùng | File cũ, alias sai, không match view. Bỏ qua. |
+| 4 | LineString/Polygon cần double-click hoặc finishBtn | Point kết thúc tự động, các loại kia phải explicit finish. |
+| 5 | Two-map architecture | 2 OL map độc lập. Không để controller này truy cập map của controller kia. |
+| 6 | Properties JSON trả về 2 format | Tùy cấu hình WCF serializer, có thể là Array hoặc Object. |
+| 7 | Spatial index bbox | `(100, 8, 110, 24)` — phủ Việt Nam. Query ngoài bbox không dùng index. |
+| 8 | LayerType case | Code mới dùng `'POLYGON'` (hoa). Dữ liệu cũ có thể `'polygon'` (thường). |
+| 9 | IIS Express port conflict | Port 52106 có thể bị giữ khi process cũ chưa die. Kill bằng `Stop-Process -Name iisexpress`. |
+
+---
+
+## 9. Quick Reference — Khi cần sửa gì
+
+| Cần làm | File cần sửa |
 |---|---|
 | Thêm menu item | `resources/desktop/menu.json` + tạo view mới |
-| Đổi API host | `app/desktop/src/Application.js` → `apiHost` |
-| Sửa trang "Edit Layers" (grid + map vẽ) | `EditLayer/LayerView.js` + `EditLayer/EditLayerController.js` |
-| Sửa trang "Layers" (map + layer panel) | `controller/LayerController.js` + `LAYERS/LayerPanel.js` |
+| Đổi API host | `Application.js` → `apiHost` |
+| Sửa trang Edit Layers (grid + map vẽ) | `EditLayer/LayerView.js` + `EditLayer/EditLayerController.js` |
+| Sửa trang Layers (map + layer panel) | `controller/LayerController.js` + `LAYERS/LayerPanel.js` |
 | Sửa CRUD Feature UI | `FeatureCRUD/FeatureCRUDPanel.js` |
 | Sửa CRUD Layer UI | `LayerCRUD/LayerCRUDPanel.js` |
-| Thêm API endpoint | `IServices/ILayerService.cs` → `Services/LayerService.cs` → `Bussines/LayerBLL.cs` → `Repositories/LayerRepository.cs` |
-| Sửa schema DB | `Create_Tables.sql` (chỉ tham khảo, thay đổi trực tiếp trong SQL Server) |
-| Sửa style popup bản đồ | `index.html` → `<style>.ol-popup...` |
-| Sửa style vẽ feature trên map | `LayerController.js` → `drawWktOnMap()` hoặc `EditLayerController.js` → `drawSource` style |
-
----
-
-## 9. Các vấn đề đã biết / Ghi chú kỹ thuật
-
-1. **`Ext.Toast` vs `Ext.toast`**: Trong ExtJS 8 Modern, `Ext.Toast` (viết hoa T) là class, `Ext.toast()` là method helper. Dùng `Ext.toast({ message, timeout })`.
-
-2. **`Ext.window.Window` không tồn tại trong Modern toolkit** — `LayerViewController.js` cũ dùng điều này và bị lỗi. File đó giờ không được dùng nữa; thay bằng `EditLayerController.js`.
-
-3. **`FeatureFormView.js` dùng `Ext.form.Panel`** (Classic) — file còn đó nhưng không được dùng nữa.
-
-4. **Properties JSON trong DB**: Stored dưới dạng `NVARCHAR(MAX)` với cấu trúc `{"key":"value"}`. WCF tự-serialize Dictionary thành JSON array `[{Key,Value}]` trong một số cấu hình — FE xử lý cả 2 format trong `showOlPopup()`.
-
-5. **Spatial Index bounding box**: `(100, 8, 110, 24)` — tọa độ bao phủ Việt Nam. Query ngoài bbox sẽ không dùng index.
-
-6. **Layer type case**: DB có dữ liệu cũ là `'polygon'` (thường) nhưng code mới dùng `'POLYGON'` (hoa). FE check không phân biệt hoa thường nhưng SQL có thể khác.
-
-7. **`drawend` + `singleclick` conflict**: Khi vẽ Point, `drawend` và `singleclick` đều fire trên cùng 1 click. Fix: flag `drawJustEnded = true`, clear sau 350ms.
-
-8. **Tọa độ hà Nội mặc định**: `[105.8342, 21.0278]` (lon, lat) — trung tâm Hà Nội.
+| Thêm API endpoint | `ILayerService.cs` → `LayerService.cs` → `LayerBLL.cs` → `LayerRepository.cs` |
+| Sửa schema DB | Thực hiện migration trực tiếp trong SQL Server |
+| Sửa style popup bản đồ | `index.html` → `.ol-popup` CSS |
+| Sửa style render feature | `LayerController.drawWktOnMap()` hoặc `EditLayerController` drawSource style |
+| Sửa tọa độ trung tâm mặc định | `[105.8342, 21.0278]` (Hà Nội) trong cả 2 controller |

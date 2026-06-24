@@ -1,25 +1,69 @@
-# Hệ thống WebGIS — gClient & gServer
+# WebGIS — gClient & gServer
 
-## Giới thiệu
+## Giới thiệu dự án
 
-Dự án xây dựng một hệ thống **WebGIS** hoàn chỉnh cho phép quản lý và hiển thị dữ liệu không gian địa lý trên nền web, gồm hai thành phần chính:
+**gServer / gClient** là hệ thống **WebGIS** hoàn chỉnh cho phép quản lý, hiển thị và chỉnh sửa dữ liệu không gian địa lý ngay trên trình duyệt web.
 
-| Thành phần | Công nghệ | Vai trò |
-|---|---|---|
-| **gClient** | ExtJS 8 + OpenLayers | Giao diện người dùng, hiển thị bản đồ |
-| **gServer** | WCF .NET 4.5.1 | Cung cấp dịch vụ dữ liệu qua HTTP/JSON |
-| **Database** | SQL Server + Spatial | Lưu trữ dữ liệu lớp bản đồ và hình học |
+```mermaid
+graph LR
+    U["👤 Người dùng\n(Trình duyệt)"]
+    FE["🖥️ gClient\nExtJS 8 + OpenLayers 10"]
+    BE["⚙️ gServer\nWCF .NET 4.5.1"]
+    DB["🗄️ SQL Server\nGEOMETRY + Spatial Index"]
 
-## Mục tiêu dự án
+    U <-->|"Bản đồ tương tác"| FE
+    FE <-->|"HTTP/JSON REST"| BE
+    BE <-->|"ADO.NET"| DB
+```
 
-- Xây dựng service WCF cung cấp dữ liệu GIS (layers, features, geometry)
-- Frontend ExtJS nhận dữ liệu và điều khiển hiển thị lớp bản đồ
-- OpenLayers render hình học WKT lên bản đồ tương tác
-- Hỗ trợ 3 loại đối tượng: **POINT**, **LINE**, **POLYGON**
+---
+
+## Tech Stack
+
+| Thành phần | Công nghệ | Phiên bản | Vai trò |
+|---|---|---|---|
+| **Frontend** | ExtJS | 8 (Modern toolkit) | SPA framework, Grid, Panel, Store |
+| **Bản đồ** | OpenLayers | 10 (CDN) | Render geometry, Draw interaction |
+| **Backend** | WCF REST | .NET 4.5.1 | REST API, JSON response |
+| **Database** | SQL Server | 2016+ | Lưu GEOMETRY, Spatial Index |
+| **Build tool** | Sencha Cmd | — | Dev server port 1962 |
+| **Logging** | log4net | — | Rolling file logs |
+
+---
+
+## URL môi trường Dev
+
+| Thành phần | URL |
+|---|---|
+| Frontend | `http://localhost:1962` |
+| Backend API | `http://localhost:52106/LayerService.svc` |
+| Database | `Server=10.0.1.207\sql2k16;Database=gServer_dev_DB` |
+
+---
+
+## Tính năng chính
+
+!!! success "Quản lý Layer"
+    Thêm / sửa / xóa lớp bản đồ (POINT, LINESTRING, POLYGON).  
+    Mỗi layer có metadata: tên, mô tả, kiểu hình học, độ mờ, zoom range.
+
+!!! success "Hiển thị Feature trên bản đồ"
+    Bật/tắt từng feature theo checkbox. Hệ thống tự gom batch request (debounce 400ms) để tối ưu.  
+    Click feature trên map → popup thuộc tính. Click map rỗng → Identify nearest feature.
+
+!!! success "CRUD Feature có WKT"
+    Thêm / sửa / xóa feature. Nhập WKT tay hoặc **vẽ trực tiếp trên bản đồ**.  
+    Hỗ trợ 3 loại hình học: Point, LineString, Polygon.
+
+!!! success "Vẽ lại Geometry"
+    Khi sửa feature, có thể **vẽ lại hình học** (redraw) trực tiếp trên bản đồ thay vì nhập WKT bằng tay.
+
+---
 
 ## Yêu cầu hệ thống
 
 - .NET Framework 4.5.1
-- SQL Server 2014+ (hỗ trợ kiểu `GEOMETRY`)
-- Node.js (chạy dev server Sencha)
-- Trình duyệt hiện đại (Chrome, Edge)
+- SQL Server 2016+ (cần kiểu `GEOMETRY` và Spatial Index)
+- Node.js + Sencha Cmd (chạy dev server frontend)
+- Trình duyệt hiện đại: Chrome, Edge
+- IIS Express (chạy WCF backend)
