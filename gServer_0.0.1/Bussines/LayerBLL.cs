@@ -1,6 +1,8 @@
 ﻿using gServer_0._0._1.Helper;
 using gServer_0._0._1.Models;
 using gServer_0._0._1.Repositories;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -241,6 +243,17 @@ namespace gServer_0._0._1.Bussines
         {
             return await _layerRepository.GetFeatureGeometryAsync(featuresId);
         }
+        public async Task<Feature> GetFeatureByIdAsync(int featureId)
+        {
+            return await _layerRepository.GetFeatureByIdAsync(featureId);
+        }
+
+        public async Task<FeatureCollection> IdentifyFeaturesAsync(IdentifyRequest request)
+        {
+            if (request == null) return new FeatureCollection();
+            return await _layerRepository.IdentifyFeaturesAsync(request.lon, request.lat);
+        }
+
         public async Task<FeatureCollection> GetFeaturesByListIdsAsync(FeatureBatchRequest request)
         {
             //if (featureIds == null || !featureIds.Any())
@@ -253,6 +266,98 @@ namespace gServer_0._0._1.Bussines
 
             return await _layerRepository.GetFeaturesByListIdsAsync(request);
         }
-        
+
+        public async Task<ServiceResult<int>> AddFeatureAsync(int layerId, FeatureRequest feature)
+        {
+            var result = new ServiceResult<int>();
+            if (feature == null || string.IsNullOrWhiteSpace(feature.GeomWkt))
+            {
+                result.Success = false;
+                result.Message = "Dữ liệu Feature hoặc hình học không được để trống!";
+                return result;
+            }
+            try
+            {
+                int newId = await _layerRepository.InsertFeatureAsync(layerId, feature.GeomWkt, feature.Properties);
+                result.Success = true;
+                result.Data = newId;
+                result.Message = "Thêm Feature thành công!";
+                LogHelper.LogInfo($"[BLL] Thêm Feature Id={newId} vào Layer {layerId}");
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerBLL.AddFeatureAsync] LayerId: {layerId}", ex);
+                result.Success = false;
+                result.Message = "Lỗi hệ thống: " + ex.Message;
+            }
+            return result;
+        }
+
+        public async Task<ServiceResult<int>> UpdateFeatureAsync(int featureId, FeatureRequest feature)
+        {
+            var result = new ServiceResult<int>();
+            if (featureId <= 0 || feature == null || string.IsNullOrWhiteSpace(feature.GeomWkt))
+            {
+                result.Success = false;
+                result.Message = "Id hoặc hình học không hợp lệ!";
+                return result;
+            }
+            try
+            {
+                int rows = await _layerRepository.UpdateFeatureAsync(featureId, feature.GeomWkt, feature.Properties);
+                if (rows > 0)
+                {
+                    result.Success = true;
+                    result.Data = featureId;
+                    result.Message = "Cập nhật Feature thành công!";
+                }
+                else
+                {
+                    result.Success = false;
+                    result.Message = "Không tìm thấy Feature cần cập nhật.";
+                }
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerBLL.UpdateFeatureAsync] FeatureId: {featureId}", ex);
+                result.Success = false;
+                result.Message = "Lỗi hệ thống: " + ex.Message;
+            }
+            return result;
+        }
+
+        public async Task<ServiceResult<int>> DeleteFeatureAsync(int featureId)
+        {
+            var result = new ServiceResult<int>();
+            if (featureId <= 0)
+            {
+                result.Success = false;
+                result.Message = "Mã Feature không hợp lệ.";
+                return result;
+            }
+            try
+            {
+                int rows = await _layerRepository.DeleteFeatureAsync(featureId);
+                if (rows > 0)
+                {
+                    result.Success = true;
+                    result.Data = featureId;
+                    result.Message = "Xóa Feature thành công!";
+                    LogHelper.LogInfo($"[BLL] Xóa Feature Id={featureId}");
+                }
+                else
+                {
+                    result.Success = false;
+                    result.Message = "Feature không tồn tại hoặc đã bị xóa.";
+                }
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerBLL.DeleteFeatureAsync] FeatureId: {featureId}", ex);
+                result.Success = false;
+                result.Message = "Lỗi hệ thống: " + ex.Message;
+            }
+            return result;
+        }
     }
 }

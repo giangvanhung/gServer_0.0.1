@@ -16,11 +16,16 @@ Ext.define('gClient.view.LAYERS.LayerPanel', {
                     flex: 2,
                     margin: '0 15 15 0',
                     cls: 'layers-DPHCC-cls',
+                    layout: 'vbox',              // ← ADD CÁCH NÀY
+                    scrollable: 'y',             // ← THAY TỪNG NÀY
+                    // height: 1000,              // ← COMMENT LẠI
+                    maxHeight: 1000, 
+                    // scrollable: 'vertical',
                     bodyPadding: 15,
-                    style: 'border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);',
+                    style: 'border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);border-left: 5px solid #2196F3;',
                     title: 'Layers',
-                    html: '<h2 style="color: #2196F3; margin: 5px 0;">12 Layer</h2><p style="color: #777; margin:0;">Đang hoạt động trên hệ thống</p>',
-                    style: 'border-left: 5px solid #2196F3;'
+                    items: [],
+                    // html: '<h2 style="color: #2196F3; margin: 5px 0;">12 Layer</h2><p style="color: #777; margin:0;">Đang hoạt động trên hệ thống</p>',
                 },
                 {
                     title: 'Maps',

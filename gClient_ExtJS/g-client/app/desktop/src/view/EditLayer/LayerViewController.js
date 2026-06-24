@@ -221,7 +221,7 @@ Ext.define('gClient.view.EditLayer.LayerViewController', {
             }
         });
 
-        console.log('Dữ liệu chuẩn bị gửi lên C# API:', featurePayload);
+        // Ext.log('Dữ liệu chuẩn bị gửi lên C# API:', featurePayload);
 
         // Đặt hiệu ứng Loading cho Window trong khi chờ API phản hồi
         win.setLoading('Đang lưu dữ liệu...');

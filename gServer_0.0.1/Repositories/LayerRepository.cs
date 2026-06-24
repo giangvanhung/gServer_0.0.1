@@ -1,6 +1,7 @@
 ﻿using gServer_0._0._1.Helper;
 using gServer_0._0._1.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -393,6 +394,90 @@ namespace gServer_0._0._1.Repositories
             return null; 
         }
 
+        public async Task<Feature> GetFeatureByIdAsync(int featureId)
+        {
+            string sql = @"
+                SELECT
+                    Id,
+                    Geom.STAsText() AS GeomText,
+                    ISNULL(Properties, '{}') AS Properties
+                FROM FEATURES
+                WHERE Id = @featureId";
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "@featureId", featureId }
+            };
+
+            DataTable dt = await _queryHelper.ExecuteReaderAsync(sql, parameters);
+
+            if (dt.Rows.Count == 0) return null;
+
+            DataRow row = dt.Rows[0];
+            var geomText = row["GeomText"] != DBNull.Value ? row["GeomText"].ToString() : null;
+            var propsRaw = row["Properties"].ToString();
+
+            Dictionary<string, object> properties = new Dictionary<string, object>();
+            if (!string.IsNullOrWhiteSpace(propsRaw) && propsRaw.Trim().StartsWith("{"))
+            {
+                try { properties = JsonConvert.DeserializeObject<Dictionary<string, object>>(propsRaw); }
+                catch { }
+            }
+
+            return new Feature
+            {
+                Id = featureId.ToString(),
+                GeomWkt = geomText,
+                Properties = properties
+            };
+        }
+
+        public async Task<FeatureCollection> IdentifyFeaturesAsync(double lon, double lat)
+        {
+            var result = new FeatureCollection();
+
+            // Buffer ~5m tolerance so point/line features are clickable, polygon uses STIntersects naturally
+            string pointWkt = $"POINT({lon.ToString(System.Globalization.CultureInfo.InvariantCulture)} {lat.ToString(System.Globalization.CultureInfo.InvariantCulture)})";
+
+            string sql = @"
+                SELECT
+                    Id,
+                    Geom.STAsText() AS GeomText,
+                    ISNULL(Properties, '{}') AS Properties
+                FROM FEATURES
+                WHERE Geom IS NOT NULL
+                  AND Geom.STIntersects(geometry::STGeomFromText(@point, 4326).STBuffer(0.00005)) = 1";
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "@point", pointWkt }
+            };
+
+            DataTable dt = await _queryHelper.ExecuteReaderAsync(sql, parameters);
+
+            foreach (DataRow row in dt.Rows)
+            {
+                var geomText = row["GeomText"] != DBNull.Value ? row["GeomText"].ToString() : null;
+                var propsRaw = row["Properties"].ToString();
+
+                Dictionary<string, object> properties = new Dictionary<string, object>();
+                if (!string.IsNullOrWhiteSpace(propsRaw) && propsRaw.Trim().StartsWith("{"))
+                {
+                    try { properties = JsonConvert.DeserializeObject<Dictionary<string, object>>(propsRaw); }
+                    catch { }
+                }
+
+                result.Features.Add(new Feature
+                {
+                    Id = row["Id"].ToString(),
+                    GeomWkt = geomText,
+                    Properties = properties
+                });
+            }
+
+            return result;
+        }
+
         public async Task<FeatureCollection> GetFeaturesByListIdsAsync(FeatureBatchRequest request)
         {
             var result = new FeatureCollection();
@@ -437,6 +522,71 @@ namespace gServer_0._0._1.Repositories
             result.CalculateEnvelope();
 
             return result;
+        }
+
+        public async Task<int> InsertFeatureAsync(int layerId, string geomWkt, string propertiesJson)
+        {
+            string propsJson = !string.IsNullOrEmpty(propertiesJson) ? propertiesJson : "{}";
+
+            LogHelper.LogInfo($"[DEBUG]: {propsJson}");
+            string sql = @"INSERT INTO FEATURES (LayerId, Geom, Properties)
+                           VALUES (@LayerId, geometry::STGeomFromText(@Geom, 4326), @Props);
+                           SELECT SCOPE_IDENTITY();";
+            var parameters = new Dictionary<string, object>
+            {
+                { "@LayerId", layerId },
+                { "@Geom",    geomWkt },
+                { "@Props",   propsJson }
+            };
+            try
+            {
+                object result = await _queryHelper.ExecuteScalarAsync(sql, parameters);
+                return (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+            }
+            catch (SqlException ex)
+            {
+                LogHelper.LogError($"[LayerRepository.InsertFeatureAsync] LayerId: {layerId}", ex);
+                throw new Exception($"Lỗi DB khi thêm Feature: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<int> UpdateFeatureAsync(int featureId, string geomWkt, string properties)
+        {
+            string propsJson = !string.IsNullOrEmpty(properties) ? properties : "{}";
+            string sql = @"UPDATE FEATURES
+                           SET Geom       = geometry::STGeomFromText(@Geom, 4326),
+                               Properties = @Props
+                           WHERE Id = @Id";
+            var parameters = new Dictionary<string, object>
+            {
+                { "@Id",    featureId },
+                { "@Geom",  geomWkt },
+                { "@Props", propsJson }
+            };
+            try
+            {
+                return await _queryHelper.ExecuteNonQueryAsync(sql, parameters);
+            }
+            catch (SqlException ex)
+            {
+                LogHelper.LogError($"[LayerRepository.UpdateFeatureAsync] FeatureId: {featureId}", ex);
+                throw new Exception($"Lỗi DB khi cập nhật Feature: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<int> DeleteFeatureAsync(int featureId)
+        {
+            string sql = "DELETE FROM FEATURES WHERE Id = @Id";
+            var parameters = new Dictionary<string, object> { { "@Id", featureId } };
+            try
+            {
+                return await _queryHelper.ExecuteNonQueryAsync(sql, parameters);
+            }
+            catch (SqlException ex)
+            {
+                LogHelper.LogError($"[LayerRepository.DeleteFeatureAsync] FeatureId: {featureId}", ex);
+                throw new Exception($"Lỗi DB khi xóa Feature: {ex.Message}", ex);
+            }
         }
     }
 }

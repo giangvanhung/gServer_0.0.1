@@ -48,5 +48,20 @@ namespace gServer_0._0._1.IServices
         [OperationContract]
         [WebInvoke(Method = "POST", UriTemplate = "layers/{layerId}/features/import", ResponseFormat = WebMessageFormat.Json)]
         Task<ServiceResult<bool>> ImportFeaturesAsync(string layerId, FeatureCollection features);
+
+        [OperationContract]
+        [WebInvoke(Method = "POST", UriTemplate = "/layers/{layerId}/features",
+                   RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json)]
+        Task<ServiceResult<int>> AddFeatureAsync(string layerId, FeatureRequest feature);
+
+        [OperationContract]
+        [WebInvoke(Method = "PUT", UriTemplate = "/features/{id}",
+                   RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json)]
+        Task<ServiceResult<int>> UpdateFeatureAsync(string id, FeatureRequest feature);
+
+        [OperationContract]
+        [WebInvoke(Method = "DELETE", UriTemplate = "/features/{id}",
+                   ResponseFormat = WebMessageFormat.Json)]
+        Task<ServiceResult<int>> DeleteFeatureAsync(string id);
     }
 }

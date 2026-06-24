@@ -15,7 +15,7 @@ Ext.define('gClient.controller.MapController', {
     initOpenLayersMap: function (panel) {
         // 🔥 ĐOẠN CHECK THẦN THÁNH: Nếu panel này đã dựng map rồi -> CHẶN KHÔNG CHO TẠO TIẾP
         if (panel.map) {
-            Ext.log("Bản đồ đã tồn tại cho panel này, chỉ cập nhật kích thước.");
+            // Ext.log("Bản đồ đã tồn tại cho panel này, chỉ cập nhật kích thước.");
             setTimeout(function() {
                 if (panel.map) {
                     panel.map.updateSize(); 
@@ -24,7 +24,7 @@ Ext.define('gClient.controller.MapController', {
             return; // Thoát hẳn hàm, không chạy xuống lệnh khởi tạo ở dưới!
         }
 
-        Ext.log("Khởi tạo bản đồ OpenLayers cho: " + panel.getXTypes());
+        // Ext.log("Khởi tạo bản đồ OpenLayers cho: " + panel.getXTypes());
 
         // 🎯 Lấy Element Target an toàn tự động (Dù dùng cấu trúc html div hay dom gốc)
         var targetDomId;

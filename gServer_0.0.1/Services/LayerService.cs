@@ -2,6 +2,7 @@
 using gServer_0._0._1.Helper;
 using gServer_0._0._1.IServices;
 using gServer_0._0._1.Models;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -167,14 +168,83 @@ namespace gServer_0._0._1.Services
 
         public async Task<Feature> GetFeaturesAsync(string id)
         {
-            var fe = new Feature();
-            return fe;
+            try
+            {
+                if (int.TryParse(id, out int intId))
+                {
+                    var feature = await _layerBLL.GetFeatureByIdAsync(intId);
+                    return feature ?? new Feature();
+                }
+                throw new WebFaultException<string>("Id không hợp lệ", System.Net.HttpStatusCode.BadRequest);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerService.GetFeaturesAsync] FeatureId: {id}", ex);
+                return new Feature();
+            }
         }
 
         public async Task<FeatureCollection> IdentifyAsync(IdentifyRequest request)
         {
-            var feat = new FeatureCollection();
-            return feat;
+            try
+            {
+                if (request == null)
+                    return new FeatureCollection();
+
+                return await _layerBLL.IdentifyFeaturesAsync(request);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerService.IdentifyAsync] lon={request?.lon} lat={request?.lat}", ex);
+                return new FeatureCollection();
+            }
+        }
+
+        public async Task<ServiceResult<int>> AddFeatureAsync(string layerId, FeatureRequest feature)
+        {
+            try
+            {
+                LogHelper.LogInfo($"[AddFeature] Request: {JsonConvert.SerializeObject(feature)}");
+                LogHelper.LogInfo($"[AddFeature] Properties: {(feature?.Properties == null ? "NULL" : feature.Properties.ToString())}");
+                if (!int.TryParse(layerId, out int intLayerId))
+                    throw new WebFaultException<string>("layerId không hợp lệ", System.Net.HttpStatusCode.BadRequest);
+                return await _layerBLL.AddFeatureAsync(intLayerId, feature);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerService.AddFeatureAsync] layerId={layerId}", ex);
+                return new ServiceResult<int> { Success = false, Message = "Lỗi hệ thống: " + ex.Message };
+            }
+        }
+
+        public async Task<ServiceResult<int>> UpdateFeatureAsync(string id, FeatureRequest feature)
+        {
+            try
+            {
+                if (!int.TryParse(id, out int intId))
+                    throw new WebFaultException<string>("id không hợp lệ", System.Net.HttpStatusCode.BadRequest);
+                return await _layerBLL.UpdateFeatureAsync(intId, feature);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerService.UpdateFeatureAsync] id={id}", ex);
+                return new ServiceResult<int> { Success = false, Message = "Lỗi hệ thống: " + ex.Message };
+            }
+        }
+
+        public async Task<ServiceResult<int>> DeleteFeatureAsync(string id)
+        {
+            try
+            {
+                if (!int.TryParse(id, out int intId))
+                    throw new WebFaultException<string>("id không hợp lệ", System.Net.HttpStatusCode.BadRequest);
+                return await _layerBLL.DeleteFeatureAsync(intId);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerService.DeleteFeatureAsync] id={id}", ex);
+                return new ServiceResult<int> { Success = false, Message = "Lỗi hệ thống: " + ex.Message };
+            }
         }
     }
 }
