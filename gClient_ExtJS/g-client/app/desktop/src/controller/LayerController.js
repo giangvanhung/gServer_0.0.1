@@ -22,6 +22,7 @@ Ext.define('gClient.controller.LayerController', {
     layerToggleState: {},
     layerLoading: {},        // { layerId: true } while a load is in flight
     layerEyeBtns: {},        // { layerId: Ext.Button } — held so we can disable during load
+    layerFeaturesCache: {},  // { layerId: { features: [...], boundingBox: {} } } — populated on first show
     highlightedFeatureId: null,
     layerStores: {},
     featureCRUDPanel: null,
@@ -232,7 +233,11 @@ Ext.define('gClient.controller.LayerController', {
         if (btn) btn.setDisabled(true);
 
         me.fetchAndCacheLayerStyle(layerId, function(style) {
-            me._drawLayerFeatures(layerId, style);
+            if (me.layerFeaturesCache[layerId]) {
+                me._drawFromCache(layerId, style);   // instant — no HTTP
+            } else {
+                me._drawLayerFeatures(layerId, style);
+            }
         });
     },
 
@@ -241,6 +246,31 @@ Ext.define('gClient.controller.LayerController', {
             btn = me.layerEyeBtns[layerId];
         me.layerLoading[layerId] = false;
         if (btn) btn.setDisabled(false);
+    },
+
+    // Draw from in-memory cache — no HTTP requests
+    _drawFromCache: function(layerId, style) {
+        var me     = this,
+            cached = me.layerFeaturesCache[layerId];
+
+        if (!cached) {
+            me._drawLayerFeatures(layerId, style);
+            return;
+        }
+
+        me.layerFeatureIds[layerId] = [];
+        Ext.Array.each(cached.features, function(feat) {
+            me.drawWktOnMap(feat.GeomWkt, feat.Id, style);
+            me.layerFeatureIds[layerId].push(feat.Id);
+        });
+        if (cached.boundingBox) me.zoomToBoundingBox(cached.boundingBox);
+
+        me._finishLayerLoad(layerId);
+    },
+
+    // Call whenever features are created/updated/deleted so next show re-fetches
+    invalidateLayerCache: function(layerId) {
+        delete this.layerFeaturesCache[layerId];
     },
 
     fetchAndCacheLayerStyle: function(layerId, callback) {
@@ -292,6 +322,12 @@ Ext.define('gClient.controller.LayerController', {
 
                 var fc = Ext.decode(response.responseText);
                 if (fc && fc.Features) {
+                    // Save to cache so future toggles skip the HTTP round-trip
+                    me.layerFeaturesCache[layerId] = {
+                        features:    fc.Features,
+                        boundingBox: fc.BoundingBox || null
+                    };
+
                     me.layerFeatureIds[layerId] = [];
                     Ext.Array.each(fc.Features, function(feat) {
                         me.drawWktOnMap(feat.GeomWkt, feat.Id, style);
@@ -802,6 +838,7 @@ Ext.define('gClient.controller.LayerController', {
         var me       = this,
             mapPanel = me.mapPanelRef;
 
+        me.invalidateLayerCache(layerId);   // force re-fetch on next toggle-on
         me.reloadLayerStore(layerId);
 
         if (action === 'delete') {
