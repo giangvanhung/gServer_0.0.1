@@ -1,11 +1,9 @@
-﻿using gServer_0._0._1.Bussines;
+using gServer_0._0._1.Bussines;
 using gServer_0._0._1.Helper;
 using gServer_0._0._1.IServices;
 using gServer_0._0._1.Models;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.ServiceModel.Web;
 using System.Threading.Tasks;
 
 namespace gServer_0._0._1.Services
@@ -13,6 +11,7 @@ namespace gServer_0._0._1.Services
     public class LayerService : ILayerService
     {
         private readonly LayerBLL _layerBLL = new LayerBLL();
+
         public async Task<ServiceResult<List<LayerListDto>>> GetLayersAsync()
         {
             try
@@ -21,160 +20,261 @@ namespace gServer_0._0._1.Services
             }
             catch (Exception ex)
             {
-                LogHelper.LogError("[LayerService.GetLayersAsync] Lỗi khi lấy danh sách Layer", ex);
-                return new ServiceResult<List<LayerListDto>>();
+                LogHelper.LogError("[LayerService.GetLayersAsync] Lỗi hệ thống", ex);
+                return new ServiceResult<List<LayerListDto>>
+                {
+                    Success = false,
+                    Message = "Lỗi hệ thống: " + ex.Message
+                };
             }
         }
-        public async Task<ServiceResult<LayerSaveDto>> CreateLayerAsync(LayerSaveDto dto)
-        {
-            try
-            {
-                var result = await _layerBLL.CreateLayerAsync(dto);
-                return result;
-            }
-            catch (Exception ex)
-            {
-                LogHelper.LogError("[LayerService.CreateLayerAsync] Lỗi hệ thống cấp Service", ex);
-                return new ServiceResult<LayerSaveDto> { Success = false, Message = "Lỗi hệ thống: " + ex.Message };
-            }
-        }
-        public async Task<ServiceResult<int>> UpdateLayerAsync(string id, LayerSaveDto dto)
-        {
-            
-            try
-            {
-                if (int.TryParse(id, out int intId))
-                {
-                    dto.Id = intId;
-                    var result = await _layerBLL.UpdateLayerAsync(dto);
-                    return result;
-                }
-                else
-                {
-                    // Xử lý lỗi nếu Id truyền lên không phải là số hợp lệ
-                    throw new WebFaultException<string>("Id không hợp lệ", System.Net.HttpStatusCode.BadRequest);
-                }
-                
-            }
-            catch (Exception ex)
-            {
-                LogHelper.LogError($"[LayerService.UpdateLayerAsync] Lỗi khi update layer Id: {id}", ex);
-                return new ServiceResult<int> { Success = false, Message = "Lỗi hệ thống: " + ex.Message };
-            }
-        }
-        public async Task<ServiceResult<int>> DeleteLayerAsync(string id)
-        {
-            try
-            {
-                if (int.TryParse(id, out int intId))
-                {
-                    var result = await _layerBLL.DeleteLayerAsync(intId);
-                    return result;
-                }
-                else
-                {
-                    // Xử lý lỗi nếu Id truyền lên không phải là số hợp lệ
-                    throw new WebFaultException<string>("Id không hợp lệ", System.Net.HttpStatusCode.BadRequest);
-                }
-                
-            }
-            catch (Exception ex)
-            {
-                LogHelper.LogError($"[LayerService.DeleteLayerAsync] Lỗi khi xóa layer Id: {id}", ex);
-                return new ServiceResult<int> { Success = false, Message = "Lỗi hệ thống: " + ex.Message };
-            }
-        }
-        public async Task<ServiceResult<bool>> ImportFeaturesAsync(string layerId, FeatureCollection features)
-        {
-            var result = new ServiceResult<bool>();
-            try
-            {
-                if (int.TryParse(layerId, out int intlayerId))
-                {
-                    if (features == null || features.Features == null || features.Features.Count == 0)
-                    {
-                        result.Success = false;
-                        result.Message = "Bộ dữ liệu không gian truyền vào trống trơn!";
-                        return result;
-                    }
 
-                    var importStatus = await _layerBLL.ImportFeaturesAsync(intlayerId, features);
-                    return importStatus;
-                }
-                else
-                {
-                    // Xử lý lỗi nếu Id truyền lên không phải là số hợp lệ
-                    throw new WebFaultException<string>("Id không hợp lệ", System.Net.HttpStatusCode.BadRequest);
-                }
-                
-            }
-            catch (Exception ex)
-            {
-                LogHelper.LogError($"[LayerService.ImportFeaturesAsync] Lỗi nghiêm trọng khi nạp dữ liệu không gian cho layer {layerId}", ex);
-                result.Success = false;
-                result.Message = "Lỗi hệ thống: " + ex.Message;
-                return result;
-            }
-        }
         public async Task<FeatureInfoCollection> GetInfoFeaturesByLayerIdAsync(string layerId)
         {
+            if (!int.TryParse(layerId, out int intLayerId))
+                return new FeatureInfoCollection();
+
             try
             {
-                if (int.TryParse(layerId, out int intlayerId))
-                {
-                    return await _layerBLL.GetInfoFeaturesByLayerIdAsync(intlayerId);
-                }
-                throw new WebFaultException<string>("Id không hợp lệ", System.Net.HttpStatusCode.BadRequest);
+                return await _layerBLL.GetInfoFeaturesByLayerIdAsync(intLayerId);
             }
             catch (Exception ex)
             {
                 LogHelper.LogError($"[LayerService.GetInfoFeaturesByLayerIdAsync] LayerId: {layerId}", ex);
-                return new FeatureInfoCollection(); // trả collection rỗng thay vì crash
+                return new FeatureInfoCollection();
             }
         }
-        public async Task<Feature> GetFeaturesGeometryAsync(string featuresId)
+
+        public async Task<Feature> GetFeaturesGeometryAsync(string featureId)
         {
+            if (!int.TryParse(featureId, out int intId))
+                return null;
+
             try
             {
-                if (int.TryParse(featuresId, out int intfeaturesId))
-                {
-                    return await _layerBLL.GetFeaturesGeometryAsync(intfeaturesId);
-                }
-                throw new WebFaultException<string>("Id không hợp lệ", System.Net.HttpStatusCode.BadRequest);
+                return await _layerBLL.GetFeaturesGeometryAsync(intId);
             }
             catch (Exception ex)
             {
-                LogHelper.LogError($"[LayerService.GetFeaturesByLayerIdAsync] LayerId: {featuresId}", ex);
-                return new Feature(); // trả collection rỗng thay vì crash
+                LogHelper.LogError($"[LayerService.GetFeaturesGeometryAsync] FeatureId: {featureId}", ex);
+                return null;
+            }
+        }
+
+        public async Task<Feature> GetFeaturesAsync(string id)
+        {
+            if (!int.TryParse(id, out int intId))
+                return null;
+
+            try
+            {
+                return await _layerBLL.GetFeatureByIdAsync(intId);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerService.GetFeaturesAsync] Id: {id}", ex);
+                return null;
+            }
+        }
+
+        public async Task<FeatureCollection> IdentifyAsync(IdentifyRequest request)
+        {
+            try
+            {
+                return await _layerBLL.IdentifyFeaturesAsync(request);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError("[LayerService.IdentifyAsync] Lỗi hệ thống", ex);
+                return new FeatureCollection();
             }
         }
 
         public async Task<FeatureCollection> GetFeaturesBatchAsync(string layerId, FeatureBatchRequest request)
         {
-            if (!int.TryParse(layerId, out int intLayerId))
+            try
             {
-                throw new WebFaultException<string>($"{intLayerId} không hợp lệ", System.Net.HttpStatusCode.BadRequest);
+                return await _layerBLL.GetFeaturesByListIdsAsync(request);
             }
-
-            if (request == null || request.FeatureIds == null || !request.FeatureIds.Any())
+            catch (Exception ex)
             {
-                return new FeatureCollection(); // Trả về rỗng nếu không có ID nào gửi lên
+                LogHelper.LogError($"[LayerService.GetFeaturesBatchAsync] LayerId: {layerId}", ex);
+                return new FeatureCollection();
             }
-
-            // Gọi đến hàm xử lý Query Helper gom cụm Id bạn vừa viết xong lúc nãy
-            return await _layerBLL.GetFeaturesByListIdsAsync(request);
         }
 
-        public async Task<Feature> GetFeaturesAsync(string id)
+        public async Task<ServiceResult<LayerSaveDto>> CreateLayerAsync(LayerSaveDto layer)
         {
-            var fe = new Feature();
-            return fe;
+            try
+            {
+                return await _layerBLL.CreateLayerAsync(layer);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError("[LayerService.CreateLayerAsync] Lỗi hệ thống cấp Service", ex);
+                return new ServiceResult<LayerSaveDto>
+                {
+                    Success = false,
+                    Message = "Lỗi hệ thống: " + ex.Message
+                };
+            }
         }
 
-        public async Task<FeatureCollection> IdentifyAsync(IdentifyRequest request)
+        public async Task<ServiceResult<int>> UpdateLayerAsync(string Id, LayerSaveDto layer)
         {
-            var feat = new FeatureCollection();
-            return feat;
+            try
+            {
+                if (!int.TryParse(Id, out int intId))
+                {
+                    return new ServiceResult<int>
+                    {
+                        Success = false,
+                        Message = "Id không hợp lệ!"
+                    };
+                }
+
+                layer.Id = intId;
+                return await _layerBLL.UpdateLayerAsync(layer);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerService.UpdateLayerAsync] Id: {Id}", ex);
+                return new ServiceResult<int>
+                {
+                    Success = false,
+                    Message = "Lỗi hệ thống: " + ex.Message
+                };
+            }
+        }
+
+        public async Task<ServiceResult<int>> DeleteLayerAsync(string Id)
+        {
+            try
+            {
+                if (!int.TryParse(Id, out int intId))
+                {
+                    return new ServiceResult<int>
+                    {
+                        Success = false,
+                        Message = "Id không hợp lệ!"
+                    };
+                }
+
+                return await _layerBLL.DeleteLayerAsync(intId);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerService.DeleteLayerAsync] Id: {Id}", ex);
+                return new ServiceResult<int>
+                {
+                    Success = false,
+                    Message = "Lỗi hệ thống: " + ex.Message
+                };
+            }
+        }
+
+        public async Task<ServiceResult<bool>> ImportFeaturesAsync(string layerId, FeatureCollection features)
+        {
+            try
+            {
+                if (!int.TryParse(layerId, out int intLayerId))
+                {
+                    return new ServiceResult<bool>
+                    {
+                        Success = false,
+                        Message = "Layer Id không hợp lệ!"
+                    };
+                }
+
+                return await _layerBLL.ImportFeaturesAsync(intLayerId, features);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerService.ImportFeaturesAsync] LayerId: {layerId}", ex);
+                return new ServiceResult<bool>
+                {
+                    Success = false,
+                    Message = "Lỗi hệ thống: " + ex.Message
+                };
+            }
+        }
+
+        public async Task<ServiceResult<int>> AddFeatureAsync(string layerId, FeatureRequest feature)
+        {
+            try
+            {
+                if (!int.TryParse(layerId, out int intLayerId))
+                {
+                    return new ServiceResult<int>
+                    {
+                        Success = false,
+                        Message = "Layer Id không hợp lệ!"
+                    };
+                }
+
+                return await _layerBLL.AddFeatureAsync(intLayerId, feature);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerService.AddFeatureAsync] LayerId: {layerId}", ex);
+                return new ServiceResult<int>
+                {
+                    Success = false,
+                    Message = "Lỗi hệ thống: " + ex.Message
+                };
+            }
+        }
+
+        public async Task<ServiceResult<int>> UpdateFeatureAsync(string id, FeatureRequest feature)
+        {
+            try
+            {
+                if (!int.TryParse(id, out int intId))
+                {
+                    return new ServiceResult<int>
+                    {
+                        Success = false,
+                        Message = "Id không hợp lệ!"
+                    };
+                }
+
+                return await _layerBLL.UpdateFeatureAsync(intId, feature);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerService.UpdateFeatureAsync] Id: {id}", ex);
+                return new ServiceResult<int>
+                {
+                    Success = false,
+                    Message = "Lỗi hệ thống: " + ex.Message
+                };
+            }
+        }
+
+        public async Task<ServiceResult<int>> DeleteFeatureAsync(string id)
+        {
+            try
+            {
+                if (!int.TryParse(id, out int intId))
+                {
+                    return new ServiceResult<int>
+                    {
+                        Success = false,
+                        Message = "Id không hợp lệ!"
+                    };
+                }
+
+                return await _layerBLL.DeleteFeatureAsync(intId);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.LogError($"[LayerService.DeleteFeatureAsync] Id: {id}", ex);
+                return new ServiceResult<int>
+                {
+                    Success = false,
+                    Message = "Lỗi hệ thống: " + ex.Message
+                };
+            }
         }
     }
 }

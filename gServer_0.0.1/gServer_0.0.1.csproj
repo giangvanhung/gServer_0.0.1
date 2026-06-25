@@ -89,6 +89,7 @@
   <ItemGroup>
     <Content Include="Global.asax" />
     <Content Include="LayerService.svc" />
+    <Content Include="LayerStyle.svc" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
@@ -112,9 +113,14 @@
     <Compile Include="Models\LayerListDto.cs" />
     <Compile Include="Models\Layer.cs" />
     <Compile Include="Models\LayerStyle.cs" />
+    <Compile Include="Models\FeatureRequest.cs" />
     <Compile Include="Models\ServiceResult.cs" />
+    <Compile Include="Bussines\LayerStyleBLL.cs" />
     <Compile Include="Repositories\LayerRepository.cs" />
+    <Compile Include="Repositories\LayerStyleRepository.cs" />
+    <Compile Include="IServices\ILayerStyleService.cs" />
     <Compile Include="Services\LayerService.cs" />
+    <Compile Include="Services\LayerStyleService.cs" />
     <Compile Include="Services\WMSService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

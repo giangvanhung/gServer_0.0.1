@@ -26,7 +26,13 @@ fi
 # --- Ensure a venv with MkDocs + required plugins ----------------------------
 if [[ ! -x "$VENV_DIR/bin/mkdocs" ]]; then
     echo "Setting up MkDocs virtualenv (first run)..."
-    python3 -m venv "$VENV_DIR"
+    # WSL2: venv may fail to create the lib64->lib symlink (non-critical).
+    # Allow that error, then check the venv is actually usable.
+    python3 -m venv "$VENV_DIR" 2>&1 || true
+    if [[ ! -x "$VENV_DIR/bin/python" ]]; then
+        echo "ERROR: Failed to create virtualenv at $VENV_DIR" >&2
+        exit 1
+    fi
     # shellcheck disable=SC1091
     source "$VENV_DIR/bin/activate"
     python -m pip install --upgrade pip >/dev/null

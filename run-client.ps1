@@ -24,13 +24,14 @@
 param(
     [ValidateSet('dev', 'build', 'build-testing')]
     [string]$Mode = 'dev',
-    [switch]$Install
+    [switch]$Install,
+    [string]$RootDir = ''
 )
 
 $ErrorActionPreference = 'Stop'
 
-# Resolve the client folder relative to this script.
-$ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+# $RootDir is passed from run-client.sh so this script works from any location.
+$ScriptRoot = if ($RootDir) { $RootDir } else { $PSScriptRoot }
 $ClientDir  = Join-Path $ScriptRoot 'gClient_ExtJS\g-client'
 
 if (-not (Test-Path (Join-Path $ClientDir 'package.json'))) {

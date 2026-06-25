@@ -1,3 +1,13 @@
 {
+    "files.watcherExclude": {
+        "**/bin/**": true,
+        "**/obj/**": true
+    },
+    "search.exclude": {
+        "**/bin": true,
+        "**/obj": true
+    },
+    "dotnet.defaultSolution": null,
+    "extensions.autoUpdate": false,
     "dotnet.preferCSharpExtension": true
 }

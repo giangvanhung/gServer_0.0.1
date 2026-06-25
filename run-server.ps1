@@ -27,15 +27,19 @@ param(
     [int]$Port = 52106,
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Debug',
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [string]$RootDir = ''
 )
 
 $ErrorActionPreference = 'Stop'
 
-# Resolve paths relative to this script.
-$ScriptRoot  = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ProjectDir  = Join-Path $ScriptRoot 'gServer_0.0.1'          # web app physical path
-$ProjectFile = Join-Path $ProjectDir 'gServer_0.0.1.csproj'
+# $RootDir is passed from run-server.sh so this script works from any location.
+$ScriptRoot = if (-not [string]::IsNullOrWhiteSpace($RootDir)) { $RootDir } else { $PSScriptRoot }
+if ([string]::IsNullOrWhiteSpace($ScriptRoot)) {
+    throw "Cannot determine script root. Use -RootDir or run as a script file."
+}
+$ProjectDir  = Join-Path -Path $ScriptRoot -ChildPath 'gServer_0.0.1'
+$ProjectFile = Join-Path -Path $ProjectDir -ChildPath 'gServer_0.0.1.csproj'
 
 if (-not (Test-Path $ProjectFile)) {
     throw "Project not found: $ProjectFile"

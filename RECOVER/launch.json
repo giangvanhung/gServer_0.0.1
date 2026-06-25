@@ -1,0 +1,26 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to IIS Express (WCF)",
+      "type": "clr",
+      "request": "attach",
+      "processName": "iisexpress.exe"
+    },
+    {
+      "name": "Debug ExtJS in Chrome",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:1962",
+      "webRoot": "${workspaceFolder}/gClient_ExtJS/g-client",
+      "preLaunchTask": "extjs: dev server"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "WCF + ExtJS (full stack)",
+      "configurations": ["Attach to IIS Express (WCF)", "Debug ExtJS in Chrome"],
+      "stopAll": true
+    }
+  ]
+}

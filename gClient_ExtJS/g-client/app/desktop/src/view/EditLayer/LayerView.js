@@ -43,6 +43,15 @@ Ext.define('gClient.view.EditLayer.LayerView', {
                         '->',
                         {
                             xtype: 'button',
+                            text: 'Style',
+                            iconCls: 'x-fa fa-palette',
+                            reference: 'editStyleBtn',
+                            disabled: true,
+                            handler: 'onEditStyle',
+                            tooltip: 'Chỉnh màu & style hiển thị trên bản đồ'
+                        },
+                        {
+                            xtype: 'button',
                             text: 'Feature',
                             iconCls: 'x-fa fa-list',
                             reference: 'manageFeatureBtn',

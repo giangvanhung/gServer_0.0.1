@@ -17,6 +17,7 @@ Ext.define('gClient.view.EditLayer.EditLayerController', {
 
     featureCRUDPanel: null,
     layerCRUDPanel: null,
+    layerStyleCRUDPanel: null,
 
     // ─── GRID ───────────────────────────────────────────────────────────────────
 
@@ -50,10 +51,12 @@ Ext.define('gClient.view.EditLayer.EditLayerController', {
             hasSel    = selected && selected.length > 0,
             editBtn   = me.lookup('editLayerBtn'),
             deleteBtn = me.lookup('deleteLayerBtn'),
+            styleBtn  = me.lookup('editStyleBtn'),
             featBtn   = me.lookup('manageFeatureBtn');
 
         if (editBtn)   editBtn.setDisabled(!hasSel);
         if (deleteBtn) deleteBtn.setDisabled(!hasSel);
+        if (styleBtn)  styleBtn.setDisabled(!hasSel);
         if (featBtn)   featBtn.setDisabled(!hasSel);
 
         if (hasSel) {
@@ -97,6 +100,28 @@ Ext.define('gClient.view.EditLayer.EditLayerController', {
         if (this.currentLayerId) {
             this.openFeatureCRUD(this.currentLayerId, this.currentLayerName);
         }
+    },
+
+    onEditStyle: function() {
+        if (this.currentLayerRecord) {
+            this.openLayerStyleCRUD(this.currentLayerRecord);
+        }
+    },
+
+    openLayerStyleCRUD: function(layerData) {
+        var me = this;
+
+        if (!me.layerStyleCRUDPanel) {
+            me.layerStyleCRUDPanel = Ext.create('gClient.view.LayerStyleCRUD.LayerStyleCRUDPanel');
+        }
+
+        me.layerStyleCRUDPanel.getController().loadStyle(
+            layerData,
+            gClient.app.getApiHost(),
+            function() {
+                // nothing to reload in the layer list — style changes don't affect layer metadata
+            }
+        );
     },
 
     openLayerCRUD: function(layerData) {

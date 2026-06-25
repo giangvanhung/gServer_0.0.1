@@ -28,6 +28,20 @@ Ext.define('gClient.view.LAYERS.LayerPanel', {
                     // html: '<h2 style="color: #2196F3; margin: 5px 0;">12 Layer</h2><p style="color: #777; margin:0;">Đang hoạt động trên hệ thống</p>',
                 },
                 {
+                    xtype: 'panel',
+                    cls: 'feature-props-DPHCC-cls',
+                    flex: 2,
+                    hidden: true,
+                    closable: true,
+                    closeAction: 'hide',
+                    scrollable: 'y',
+                    maxHeight: 1000,
+                    margin: '0 15 15 0',
+                    bodyPadding: 10,
+                    title: 'Feature Properties',
+                    style: 'border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-left: 5px solid #4CAF50;'
+                },
+                {
                     title: 'Maps',
                     xtype: 'panel',
                     cls: 'map-DPHCC-cls',
