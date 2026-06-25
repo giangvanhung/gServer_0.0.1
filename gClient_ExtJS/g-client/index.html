@@ -8,6 +8,61 @@
   <title>gClient</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.1.0/ol.css">
   <script src="https://cdn.jsdelivr.net/npm/ol@v10.1.0/dist/ol.js"></script>
+  <style>
+    .ol-popup {
+      position: absolute;
+      background: #fff;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+      padding: 12px 14px 10px;
+      border-radius: 8px;
+      min-width: 180px;
+      max-width: 300px;
+      max-height: 240px;
+      overflow-y: auto;
+      font-size: 12px;
+      font-family: Arial, sans-serif;
+      transform: translate(-50%, calc(-100% - 12px));
+      pointer-events: auto;
+    }
+    .ol-popup::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 8px solid transparent;
+      border-top-color: #fff;
+      border-bottom: none;
+    }
+    .ol-popup-closer {
+      position: absolute;
+      top: 5px; right: 8px;
+      background: none; border: none;
+      font-size: 16px; cursor: pointer;
+      color: #aaa; line-height: 1; padding: 0;
+    }
+    .ol-popup-closer:hover { color: #333; }
+    .ol-popup-title {
+      font-weight: bold;
+      color: #1890ff;
+      margin-bottom: 7px;
+      padding-right: 18px;
+      font-size: 12px;
+    }
+    .ol-popup-table { width: 100%; border-collapse: collapse; }
+    .ol-popup-table td {
+      padding: 3px 5px;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: top;
+    }
+    .ol-popup-table td.key { font-weight: 600; color: #555; white-space: nowrap; padding-right: 8px; }
+    .ol-popup-table td.val { color: #222; word-break: break-word; }
+    .ol-popup-empty { color: #999; font-style: italic; }
+
+  /* Draw toolbar */
+  #draw-toolbar button:hover { opacity: 0.85; }
+  #draw-toolbar select:focus { border-color: #1890ff; outline: none; }
+  </style>
   <script type="text/javascript">
     var Ext = Ext || {};
     Ext.beforeLoad = function (tags) {
@@ -27,6 +82,5 @@
     <i style="margin:20px;" class="fa fa-spinner fa-spin"></i>
   </div>
 </body>
-
 
 </html>
