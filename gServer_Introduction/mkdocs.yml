@@ -1,6 +1,6 @@
-site_name: gServer — Tài liệu kỹ thuật WebGIS
-site_description: WCF REST service .NET 4.5.1 — API JSON cho hệ thống WebGIS quản lý lớp bản đồ và đối tượng không gian
-site_author: gClient Team
+site_name: gServer / gClient — WebGIS Platform
+site_description: Hệ thống WebGIS đầy đủ stack — WCF .NET 4.5.1 REST API + ExtJS 8 + OpenLayers
+site_author: Giang Van Hung
 
 theme:
   name: material
@@ -11,37 +11,48 @@ theme:
       accent: blue
       toggle:
         icon: material/brightness-7
-        name: Chuyển sang dark mode
+        name: Chuyển dark mode
     - scheme: slate
       primary: indigo
       accent: blue
       toggle:
         icon: material/brightness-4
-        name: Chuyển sang light mode
+        name: Chuyển light mode
   features:
     - navigation.tabs
     - navigation.tabs.sticky
     - navigation.sections
     - navigation.expand
     - navigation.top
+    - navigation.footer
+    - navigation.indexes
     - content.code.copy
     - content.code.annotate
-    - toc.integrate
+    - content.tabs.link
+    - toc.follow
+    - search.highlight
 
 nav:
   - Tổng quan: index.md
-  - Bài toán & Giải pháp: problem.md
-  - Kiến trúc hệ thống: architecture.md
+  - Kiến trúc:
+    - Sơ đồ hệ thống: architecture.md
+    - Luồng dữ liệu: dataflow.md
   - Cơ sở dữ liệu: database.md
-  - Backend (gServer): backend.md
-  - Frontend (gClient): frontend.md
-  - Luồng dữ liệu: dataflow.md
+  - Backend (gServer):
+    - Kiến trúc & Code: backend.md
+    - API Reference: api.md
+  - Frontend (gClient):
+    - Kiến trúc & Component: frontend.md
+    - Cơ chế nâng cao: frontend-advanced.md
+  - Đã hoàn thành: done.md
 
 markdown_extensions:
   - admonition
   - pymdownx.details
   - pymdownx.highlight:
       anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.superfences:
       custom_fences:
@@ -50,11 +61,18 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
   - tables
   - attr_list
   - md_in_html
+  - def_list
   - toc:
       permalink: true
+      title: Mục lục
 
 extra_javascript:
   - https://unpkg.com/mermaid/dist/mermaid.min.js
+
+extra_css:
+  - assets/extra.css

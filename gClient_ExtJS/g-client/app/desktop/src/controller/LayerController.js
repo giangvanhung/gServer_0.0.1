@@ -23,12 +23,13 @@ Ext.define('gClient.controller.LayerController', {
     layerLoading: {},        // { layerId: true } while a load is in flight
     layerEyeBtns: {},        // { layerId: Ext.Button } — held so we can disable during load
     layerFeaturesCache: {},  // { layerId: { features: [...], boundingBox: {} } } — populated on first show
-    highlightedFeatureId: null,
+    hiddenFeatureIds: {},    // { layerId: { featureId: true } } — user explicitly unchecked
     layerStores: {},
     featureCRUDPanel: null,
     layerCRUDPanel: null,
     layerStyleCRUDPanel: null,
     layerStyles: {},          // { layerId: styleObj|null } — null means "no style, use defaults"
+    currentPanelFeatureId: null,  // featureId whose properties panel is currently open
     currentDrawLayerId: null,
     currentDrawLayerName: null,
     layerList: [],
@@ -96,8 +97,7 @@ Ext.define('gClient.controller.LayerController', {
                 var extent = clickedOlFeature.getGeometry().getExtent();
                 var center = ol.extent.getCenter(extent);
 
-                me.showFeaturePanel('Feature #' + fid, props);
-                me.applyHighlightStyle(panel, fid);
+                me.showFeaturePanel('Feature #' + fid, props, fid);
                 me.highlightGridRow(fid);
             } else {
                 var lonlat = ol.proj.toLonLat(
@@ -115,19 +115,20 @@ Ext.define('gClient.controller.LayerController', {
 
     // ─── FEATURE PROPERTIES PANEL ───────────────────────────────────────────────
 
-    showFeaturePanel: function(title, properties) {
+    showFeaturePanel: function(title, properties, featureId) {
+        this.currentPanelFeatureId = featureId || null;
         var panel = Ext.ComponentQuery.query('panel[cls=feature-props-DPHCC-cls]')[0];
         if (!panel) return;
 
-        var html = '<table style="width:100%;border-collapse:collapse;">';
+        var tdKey = 'padding:5px 8px;border-bottom:1px solid #ddd;font-weight:600;color:#333;white-space:nowrap;background:#fff;';
+        var tdVal = 'padding:5px 8px;border-bottom:1px solid #ddd;color:#444;background:#fff;';
+        var html  = '<table style="width:100%;border-collapse:collapse;background:#fff;">';
 
         if (Ext.isArray(properties) && properties.length > 0) {
             Ext.Array.each(properties, function(item) {
                 html += '<tr>'
-                      + '<td style="padding:5px 8px;border-bottom:1px solid #eee;font-weight:600;color:#555;white-space:nowrap;">'
-                      + Ext.String.htmlEncode(String(item.Key || '')) + '</td>'
-                      + '<td style="padding:5px 8px;border-bottom:1px solid #eee;">'
-                      + Ext.String.htmlEncode(String(item.Value !== undefined ? item.Value : '')) + '</td>'
+                      + '<td style="' + tdKey + '">' + Ext.String.htmlEncode(String(item.Key || '')) + '</td>'
+                      + '<td style="' + tdVal + '">' + Ext.String.htmlEncode(String(item.Value !== undefined ? item.Value : '')) + '</td>'
                       + '</tr>';
             });
         } else if (properties && typeof properties === 'object') {
@@ -135,36 +136,47 @@ Ext.define('gClient.controller.LayerController', {
             if (keys.length > 0) {
                 keys.forEach(function(k) {
                     html += '<tr>'
-                          + '<td style="padding:5px 8px;border-bottom:1px solid #eee;font-weight:600;color:#555;white-space:nowrap;">'
-                          + Ext.String.htmlEncode(String(k)) + '</td>'
-                          + '<td style="padding:5px 8px;border-bottom:1px solid #eee;">'
-                          + Ext.String.htmlEncode(String(properties[k] !== null ? properties[k] : '')) + '</td>'
+                          + '<td style="' + tdKey + '">' + Ext.String.htmlEncode(String(k)) + '</td>'
+                          + '<td style="' + tdVal + '">' + Ext.String.htmlEncode(String(properties[k] !== null ? properties[k] : '')) + '</td>'
                           + '</tr>';
                 });
             } else {
-                html += '<tr><td colspan="2" style="padding:12px;color:#999;text-align:center;">Không có thuộc tính</td></tr>';
+                html += '<tr><td colspan="2" style="padding:12px;color:#999;text-align:center;background:#fff;">Không có thuộc tính</td></tr>';
             }
         } else {
-            html += '<tr><td colspan="2" style="padding:12px;color:#999;text-align:center;">Không có thuộc tính</td></tr>';
+            html += '<tr><td colspan="2" style="padding:12px;color:#999;text-align:center;background:#fff;">Không có thuộc tính</td></tr>';
         }
 
         html += '</table>';
 
+        panel.setTitle(title);
+
+        // Dùng bodyElement để set HTML trực tiếp vào body panel (ExtJS Modern)
+        var bodyEl = panel.bodyElement || panel.innerElement || panel.el;
+        if (bodyEl && bodyEl.setHtml) {
+            bodyEl.setHtml(html);
+        } else {
+            panel.setHtml(html);
+        }
+
         if (!panel.isVisible()) {
             panel.show();
-            var parent = panel.getParent ? panel.getParent() : null;
-            if (parent && parent.updateLayout) parent.updateLayout();
+            var p = panel.getParent ? panel.getParent() : null;
+            if (p && p.updateLayout) p.updateLayout();
+            var gp = p && p.getParent ? p.getParent() : null;
+            if (gp && gp.updateLayout) gp.updateLayout();
         }
-        panel.setTitle(title);
-        panel.setHtml(html);
     },
 
     hideFeaturePanel: function() {
+        this.currentPanelFeatureId = null;
         var panel = Ext.ComponentQuery.query('panel[cls=feature-props-DPHCC-cls]')[0];
         if (panel && panel.isVisible()) {
             panel.hide();
-            var parent = panel.getParent ? panel.getParent() : null;
-            if (parent && parent.updateLayout) parent.updateLayout();
+            var p = panel.getParent ? panel.getParent() : null;
+            if (p && p.updateLayout) p.updateLayout();
+            var gp = p && p.getParent ? p.getParent() : null;
+            if (gp && gp.updateLayout) gp.updateLayout();
         }
     },
 
@@ -185,8 +197,7 @@ Ext.define('gClient.controller.LayerController', {
                     var title = 'Identify — Feature #' + feat.Id
                               + (fc.Features.length > 1 ? ' (+' + (fc.Features.length - 1) + ')' : '');
 
-                    me.showFeaturePanel(title, feat.Properties);
-                    me.applyHighlightStyle(mapPanel, feat.Id);
+                    me.showFeaturePanel(title, feat.Properties, feat.Id);
                     me.highlightGridRow(feat.Id);
                 }
             }
@@ -229,12 +240,18 @@ Ext.define('gClient.controller.LayerController', {
         var me  = this,
             btn = me.layerEyeBtns[layerId];
 
+        if (me.layerLoading[layerId]) return;   // already loading — ignore double-click
+
         me.layerLoading[layerId] = true;
         if (btn) btn.setDisabled(true);
 
         me.fetchAndCacheLayerStyle(layerId, function(style) {
+            if (!me.layerToggleState[layerId]) {        // toggled off while style was fetching
+                me._finishLayerLoad(layerId);
+                return;
+            }
             if (me.layerFeaturesCache[layerId]) {
-                me._drawFromCache(layerId, style);   // instant — no HTTP
+                me._drawFromCache(layerId, style);
             } else {
                 me._drawLayerFeatures(layerId, style);
             }
@@ -252,16 +269,21 @@ Ext.define('gClient.controller.LayerController', {
     _drawFromCache: function(layerId, style) {
         var me     = this,
             cached = me.layerFeaturesCache[layerId];
-
+        
         if (!cached) {
             me._drawLayerFeatures(layerId, style);
             return;
         }
 
+        var store   = me.layerStores[layerId];
+        var hidden  = me.hiddenFeatureIds[layerId] || {};
         me.layerFeatureIds[layerId] = [];
         Ext.Array.each(cached.features, function(feat) {
+            if (hidden[feat.Id]) return;   // user đã uncheck feature này
             me.drawWktOnMap(feat.GeomWkt, feat.Id, style);
             me.layerFeatureIds[layerId].push(feat.Id);
+            var rec = store ? store.getById(feat.Id) : null;
+            if (rec) rec.set('checked', true, { silent: true });
         });
         if (cached.boundingBox) me.zoomToBoundingBox(cached.boundingBox);
 
@@ -328,12 +350,15 @@ Ext.define('gClient.controller.LayerController', {
                         boundingBox: fc.BoundingBox || null
                     };
 
+                    var hidden = me.hiddenFeatureIds[layerId] || {};
                     me.layerFeatureIds[layerId] = [];
                     Ext.Array.each(fc.Features, function(feat) {
-                        me.drawWktOnMap(feat.GeomWkt, feat.Id, style);
-                        me.layerFeatureIds[layerId].push(feat.Id);
                         var rec = store.getById(feat.Id);
                         if (rec) rec.set('Geom', feat.GeomWkt, { silent: true });
+                        if (hidden[feat.Id]) return;   // user đã uncheck feature này
+                        me.drawWktOnMap(feat.GeomWkt, feat.Id, style);
+                        me.layerFeatureIds[layerId].push(feat.Id);
+                        if (rec) rec.set('checked', true, { silent: true });
                     });
                     if (fc.BoundingBox) me.zoomToBoundingBox(fc.BoundingBox);
                 }
@@ -347,22 +372,32 @@ Ext.define('gClient.controller.LayerController', {
     // ─── ROW CLICK (list → map) ─────────────────────────────────────────────────
 
     onFeatureRowTap: function(layerId, record) {
-        var me = this,
-            featureId = record.getId(),
-            mapPanel = me.mapPanelRef,
-            props = record.get('Properties'),
-            title = 'Feature #' + featureId;
+        var me = this;
+
+        // Bỏ qua nếu được trigger bởi checkbox change (không phải row tap thuần)
+        if (me._checkboxJustChanged) return;
+
+        var featureId = record.getId(),
+            mapPanel  = me.mapPanelRef,
+            props     = record.get('Properties'),
+            title     = 'Feature #' + featureId;
 
         var olFeature = mapPanel.vectorSource.getFeatureById(featureId);
 
         if (olFeature) {
-            var extent = olFeature.getGeometry().getExtent();
-            var center = ol.extent.getCenter(extent);
-            me.showFeaturePanel(title, props);
-            me.applyHighlightStyle(mapPanel, featureId);
-            mapPanel.map.getView().fit(extent, { duration: 600, padding: [60, 60, 60, 60], maxZoom: 17 });
+            // Feature đang hiển thị → tắt đi
+            mapPanel.vectorSource.removeFeature(olFeature);
+            if (me.layerFeatureIds[layerId]) {
+                Ext.Array.remove(me.layerFeatureIds[layerId], featureId);
+            }
+            if (me.currentPanelFeatureId === featureId) me.hideFeaturePanel();
         } else {
-            me.showFeaturePanel(title, props);
+            // Feature chưa hiển thị → toggle panel hoặc bật lên
+            if (me.currentPanelFeatureId === featureId) {
+                me.hideFeaturePanel();
+                return;
+            }
+            me.showFeaturePanel(title, props, featureId);
             me.fetchGeomAndZoom(layerId, featureId, record);
         }
     },
@@ -385,52 +420,58 @@ Ext.define('gClient.controller.LayerController', {
                         me.layerFeatureIds[layerId].push(featureId);
                     }
 
-                    var olFeat = me.drawWktOnMap(feat.GeomWkt, featureId, me.layerStyles[layerId]);
-                    me.applyHighlightStyle(mapPanel, featureId);
+                    me.fetchAndCacheLayerStyle(layerId, function(style) {
+                        var olFeat = me.drawWktOnMap(feat.GeomWkt, featureId, style);
 
-                    if (olFeat && olFeat.getGeometry()) {
-                        var extent = olFeat.getGeometry().getExtent();
-                        var center = ol.extent.getCenter(extent);
-                        me.showFeaturePanel('Feature #' + featureId, record.get('Properties'));
-                        mapPanel.map.getView().fit(extent, { duration: 600, padding: [60, 60, 60, 60], maxZoom: 17 });
-                    }
+                        if (olFeat && olFeat.getGeometry()) {
+                            var extent = olFeat.getGeometry().getExtent();
+                            me.showFeaturePanel('Feature #' + featureId, record.get('Properties'), featureId);
+                            mapPanel.map.getView().fit(extent, { duration: 600, padding: [60, 60, 60, 60], maxZoom: 17 });
+                        }
+                    });
                 }
             }
         });
     },
 
-    // ─── HIGHLIGHT ──────────────────────────────────────────────────────────────
 
-    applyHighlightStyle: function(mapPanel, featureId) {
-        var me = this;
+    fetchGeomAndDraw: function(layerId, featureId, record, style) {
+        var me = this,
+            baseUrl  = gClient.app.getApiHost(),
+            mapPanel = me.mapPanelRef;
 
-        if (me.highlightedFeatureId && me.highlightedFeatureId !== featureId) {
-            var prev = mapPanel.vectorSource.getFeatureById(me.highlightedFeatureId);
-            if (prev) prev.setStyle(null);
-        }
+        Ext.Ajax.request({
+            url: baseUrl + '/LayerService.svc/features/' + featureId + '/geometry',
+            method: 'GET',
+            success: function(response) {
+                var feat = Ext.decode(response.responseText);
+                if (!feat || !feat.GeomWkt) return;
 
-        var feature = mapPanel.vectorSource.getFeatureById(featureId);
-        if (feature) {
-            feature.setStyle(new ol.style.Style({
-                fill: new ol.style.Fill({ color: 'rgba(255, 140, 0, 0.45)' }),
-                stroke: new ol.style.Stroke({ color: '#ff6600', width: 3 }),
-                image: new ol.style.Circle({
-                    radius: 8,
-                    fill: new ol.style.Fill({ color: '#ff6600' }),
-                    stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
-                })
-            }));
-            me.highlightedFeatureId = featureId;
-        }
+                record.set('Geom', feat.GeomWkt, { silent: true });
+
+                var olFeat = me.drawWktOnMap(feat.GeomWkt, featureId, style);
+                record.set('checked', true, { silent: true });
+                if (!me.layerFeatureIds[layerId]) me.layerFeatureIds[layerId] = [];
+                if (!Ext.Array.contains(me.layerFeatureIds[layerId], featureId)) {
+                    me.layerFeatureIds[layerId].push(featureId);
+                }
+                if (olFeat && olFeat.getGeometry()) {
+                    var extent = olFeat.getGeometry().getExtent();
+                    mapPanel.map.getView().fit(extent, { duration: 800, padding: [50, 50, 50, 50] });
+                }
+            }
+        });
     },
 
-    clearHighlight: function(mapPanel) {
-        var me = this;
-        if (me.highlightedFeatureId) {
-            var feat = mapPanel.vectorSource.getFeatureById(me.highlightedFeatureId);
-            if (feat) feat.setStyle(null);
-            me.highlightedFeatureId = null;
-        }
+    _findLayerIdForFeature: function(featureId) {
+        var found = null;
+        Ext.Object.each(this.layerFeatureIds, function(layerId, ids) {
+            if (Ext.Array.contains(ids, featureId)) {
+                found = layerId;
+                return false;
+            }
+        });
+        return found;
     },
 
     highlightGridRow: function(featureId) {
@@ -585,6 +626,7 @@ Ext.define('gClient.controller.LayerController', {
                         listeners: {
                             painted: function() { featureStore.load(); },
                             itemtap: function(grid, index, target, record, e) {
+                                if (e && e.getTarget && e.getTarget('.x-checkcolumn-cell, .x-checkcolumn')) return;
                                 me.onFeatureRowTap(layerItem.Id, record);
                             }
                         }
@@ -601,59 +643,49 @@ Ext.define('gClient.controller.LayerController', {
 
     // ─── CHECKBOX TOGGLE (per-feature check) ────────────────────────────────────
 
-    handleFeatureToggle: function(layerId, record, clickCoords) {
+    handleFeatureToggle: function(layerId, record) {
         var me = this,
             featureId = record.getId(),
-            isTicked = record.get('checked'),
-            mapPanel = me.mapPanelRef;
+            mapPanel  = me.mapPanelRef;
 
-        if (!isTicked) {
-            var existingFeature = mapPanel.vectorSource.getFeatureById(featureId);
-            if (existingFeature) mapPanel.vectorSource.removeFeature(existingFeature);
+        // Flag để onFeatureRowTap biết đây là sự kiện từ checkbox, không phải row tap thuần
+        me._checkboxJustChanged = true;
+        clearTimeout(me._checkboxFlagTimer);
+        me._checkboxFlagTimer = setTimeout(function() { me._checkboxJustChanged = false; }, 150);
 
-            if (me.globalPendingQueue[layerId]) {
-                Ext.Array.remove(me.globalPendingQueue[layerId], featureId);
-            }
+        if (!record.get('checked')) {
+            // Tắt feature: xóa khỏi map và đánh dấu là ẩn
+            if (!me.hiddenFeatureIds[layerId]) me.hiddenFeatureIds[layerId] = {};
+            me.hiddenFeatureIds[layerId][featureId] = true;
+
+            var olFeat = mapPanel.vectorSource.getFeatureById(featureId);
+            if (olFeat) mapPanel.vectorSource.removeFeature(olFeat);
             if (me.layerFeatureIds[layerId]) {
                 Ext.Array.remove(me.layerFeatureIds[layerId], featureId);
             }
-            return;
-        }
-
-        if (record.get('Geom')) {
-            var olFeature = me.drawWktOnMap(record.get('Geom'), featureId, me.layerStyles[layerId]);
-            if (olFeature && olFeature.getGeometry()) {
-                var extent = olFeature.getGeometry().getExtent();
-                mapPanel.map.getView().fit(extent, { duration: 800, padding: [50, 50, 50, 50] });
-            }
-            if (!me.layerFeatureIds[layerId]) me.layerFeatureIds[layerId] = [];
-            if (!Ext.Array.contains(me.layerFeatureIds[layerId], featureId)) {
-                me.layerFeatureIds[layerId].push(featureId);
-            }
-            return;
-        }
-
-        if (!me.globalPendingQueue[layerId]) me.globalPendingQueue[layerId] = [];
-        var layerQueue = me.globalPendingQueue[layerId];
-
-        var isExist = Ext.Array.some(layerQueue, function(item) { return item.id === featureId; });
-        if (!isExist) {
-            layerQueue.push({ id: featureId, coords: clickCoords || null });
-        }
-
-        clearTimeout(me.debounceTimer);
-        me.debounceTimer = setTimeout(function() {
-            Ext.Object.each(me.globalPendingQueue, function(currentLayerId, idsToSubmit) {
-                if (!idsToSubmit || idsToSubmit.length === 0) return;
-                me.globalPendingQueue[currentLayerId] = [];
-
-                if (idsToSubmit.length === 1) {
-                    me.sendSingleGeometryRequest(currentLayerId, idsToSubmit[0].id, idsToSubmit[0].coords);
+            if (me.currentPanelFeatureId === featureId) me.hideFeaturePanel();
+        } else {
+            // Gỡ dấu ẩn khi user check lại
+            if (me.hiddenFeatureIds[layerId]) delete me.hiddenFeatureIds[layerId][featureId];
+            // Bật feature: vẽ lên map
+            me.fetchAndCacheLayerStyle(layerId, function(style) {
+                var geom = record.get('Geom');
+                if (geom) {
+                    var olFeature = me.drawWktOnMap(geom, featureId, style);
+                    if (olFeature && olFeature.getGeometry()) {
+                        var extent = olFeature.getGeometry().getExtent();
+                        mapPanel.map.getView().fit(extent, { duration: 800, padding: [50, 50, 50, 50] });
+                    }
+                    if (!me.layerFeatureIds[layerId]) me.layerFeatureIds[layerId] = [];
+                    if (!Ext.Array.contains(me.layerFeatureIds[layerId], featureId)) {
+                        me.layerFeatureIds[layerId].push(featureId);
+                    }
                 } else {
-                    me.sendBatchGeometryRequest(currentLayerId, Ext.Array.pluck(idsToSubmit, 'id'));
+                    // Chưa có Geom, fetch từ server
+                    me.fetchGeomAndDraw(layerId, featureId, record, style);
                 }
             });
-        }, 400);
+        }
     },
 
     sendSingleGeometryRequest: function(layerId, featureId, clickCoords) {
@@ -666,20 +698,22 @@ Ext.define('gClient.controller.LayerController', {
             success: function(response) {
                 var featureObj = Ext.decode(response.responseText);
                 if (featureObj && featureObj.GeomWkt) {
-                    var olFeature = me.drawWktOnMap(featureObj.GeomWkt, featureObj.Id, me.layerStyles[layerId]);
+                    me.fetchAndCacheLayerStyle(layerId, function(style) {
+                        var olFeature = me.drawWktOnMap(featureObj.GeomWkt, featureObj.Id, style);
 
-                    var storeRecord = me.findRecordInGrids(featureObj.Id);
-                    if (storeRecord) storeRecord.set('Geom', featureObj.GeomWkt, { silent: true });
+                        var storeRecord = me.findRecordInGrids(featureObj.Id);
+                        if (storeRecord) storeRecord.set('Geom', featureObj.GeomWkt, { silent: true });
 
-                    if (!me.layerFeatureIds[layerId]) me.layerFeatureIds[layerId] = [];
-                    if (!Ext.Array.contains(me.layerFeatureIds[layerId], featureObj.Id)) {
-                        me.layerFeatureIds[layerId].push(featureObj.Id);
-                    }
+                        if (!me.layerFeatureIds[layerId]) me.layerFeatureIds[layerId] = [];
+                        if (!Ext.Array.contains(me.layerFeatureIds[layerId], featureObj.Id)) {
+                            me.layerFeatureIds[layerId].push(featureObj.Id);
+                        }
 
-                    if (olFeature && olFeature.getGeometry()) {
-                        var extent = olFeature.getGeometry().getExtent();
-                        me.mapPanelRef.map.getView().fit(extent, { duration: 800, padding: [50, 50, 50, 50] });
-                    }
+                        if (olFeature && olFeature.getGeometry()) {
+                            var extent = olFeature.getGeometry().getExtent();
+                            me.mapPanelRef.map.getView().fit(extent, { duration: 800, padding: [50, 50, 50, 50] });
+                        }
+                    });
                 }
             }
         });
@@ -698,18 +732,20 @@ Ext.define('gClient.controller.LayerController', {
             success: function(response) {
                 var featureCollection = Ext.decode(response.responseText);
                 if (featureCollection && featureCollection.Features) {
-                    if (!me.layerFeatureIds[layerId]) me.layerFeatureIds[layerId] = [];
+                    me.fetchAndCacheLayerStyle(layerId, function(style) {
+                        if (!me.layerFeatureIds[layerId]) me.layerFeatureIds[layerId] = [];
 
-                    Ext.Array.each(featureCollection.Features, function(feat) {
-                        me.drawWktOnMap(feat.GeomWkt, feat.Id, me.layerStyles[layerId]);
-                        if (!Ext.Array.contains(me.layerFeatureIds[layerId], feat.Id)) {
-                            me.layerFeatureIds[layerId].push(feat.Id);
-                        }
-                        var storeRecord = me.findRecordInGrids(feat.Id);
-                        if (storeRecord) storeRecord.set('Geom', feat.GeomWkt, { silent: true });
+                        Ext.Array.each(featureCollection.Features, function(feat) {
+                            me.drawWktOnMap(feat.GeomWkt, feat.Id, style);
+                            if (!Ext.Array.contains(me.layerFeatureIds[layerId], feat.Id)) {
+                                me.layerFeatureIds[layerId].push(feat.Id);
+                            }
+                            var storeRecord = me.findRecordInGrids(feat.Id);
+                            if (storeRecord) storeRecord.set('Geom', feat.GeomWkt, { silent: true });
+                        });
+
+                        if (featureCollection.BoundingBox) me.zoomToBoundingBox(featureCollection.BoundingBox);
                     });
-
-                    if (featureCollection.BoundingBox) me.zoomToBoundingBox(featureCollection.BoundingBox);
                 }
             },
             failure: function(response) {
@@ -741,6 +777,7 @@ Ext.define('gClient.controller.LayerController', {
     },
 
     drawWktOnMap: function(wktString, featureId, style) {
+        // Ext.log(style);
         var mapPanel = this.mapPanelRef;
         if (!mapPanel || !mapPanel.vectorSource) return;
 
@@ -754,39 +791,36 @@ Ext.define('gClient.controller.LayerController', {
         });
 
         olFeature.setId(featureId);
-        olFeature.setStyle(this.makeOlStyle(style));
+        var geomType = olFeature.getGeometry() ? olFeature.getGeometry().getType() : null;
+        olFeature.setStyle(this.makeOlStyle(style, geomType));
 
         mapPanel.vectorSource.addFeature(olFeature);
         return olFeature;
     },
 
     // Build an ol.style.Style from a LayerStyle object (or defaults when null)
-    makeOlStyle: function(style) {
-        var fill    = (style && style.FillColor)   || '#3399CC';
-        var stroke  = (style && style.StrokeColor) || '#FFFFFF';
-        var width   = (style && style.StrokeWidth) || 1.5;
-        var iconUrl = style && style.IconUrl;
-        var fillRgba = this.hexToRgba(fill, 0.4);
+    makeOlStyle: function(style, geomType) {
+        var fillcl   = (style && style.FillColor)   || '#3399CC';
+        var strokecl = (style && style.StrokeColor) || '#FFFFFF';
+        var width    = (style && style.StrokeWidth) || 1.5;
+        var iconUrl  = style && style.IconUrl;
+        var fillRgba = this.hexToRgba(fillcl, 0.4);
 
-        var imageStyle = iconUrl
-            ? new ol.style.Icon({
-                src: iconUrl,
-                scale: 1,
-                anchor: [0.5, 1],           // bottom-centre of image sits on the point
-                anchorXUnits: 'fraction',
-                anchorYUnits: 'fraction',
-                crossOrigin: 'anonymous'
-              })
-            : new ol.style.Circle({
-                radius: 6,
-                fill:   new ol.style.Fill({ color: fill }),
-                stroke: new ol.style.Stroke({ color: stroke, width: width })
-              });
+        if (geomType === 'Point' || geomType === 'MultiPoint') {
+            var imageStyle = iconUrl
+                ? new ol.style.Icon({ src: iconUrl, scale: 1, anchor: [0.5, 1],
+                                    anchorXUnits: 'fraction', anchorYUnits: 'fraction',
+                                    crossOrigin: 'anonymous' })
+                : new ol.style.Circle({ radius: 6,
+                                        fill:   new ol.style.Fill({ color: fillcl }),
+                                        stroke: new ol.style.Stroke({ color: strokecl, width: width }) });
+            return new ol.style.Style({ image: imageStyle });
+        }
 
+        // Polygon / LineString / Multi*
         return new ol.style.Style({
             fill:   new ol.style.Fill({ color: fillRgba }),
-            stroke: new ol.style.Stroke({ color: stroke, width: width }),
-            image:  imageStyle
+            stroke: new ol.style.Stroke({ color: strokecl, width: width })
         });
     },
 
@@ -849,10 +883,7 @@ Ext.define('gClient.controller.LayerController', {
             if (me.layerFeatureIds[layerId]) {
                 Ext.Array.remove(me.layerFeatureIds[layerId], featureId);
             }
-            if (me.highlightedFeatureId == featureId) {
-                me.hideFeaturePanel();
-                me.highlightedFeatureId = null;
-            }
+            me.hideFeaturePanel();
 
         } else if (action === 'update' && data && data.geomWkt && mapPanel && mapPanel.vectorSource) {
             if (mapPanel.vectorSource.getFeatureById(featureId)) {
@@ -1025,7 +1056,6 @@ Ext.define('gClient.controller.LayerController', {
                 featureProjection: mapPanel.map.getView().getProjection()
             });
 
-            // Prevent singleclick from triggering identify right after a Point draw
             mapPanel.drawJustEnded = true;
             setTimeout(function() {
                 if (mapPanel.drawSource) mapPanel.drawSource.clear();
@@ -1034,11 +1064,15 @@ Ext.define('gClient.controller.LayerController', {
 
             me.stopDraw(mapPanel);
             if (onDrawEnd) {
-                onDrawEnd(wkt);                   // ← update-geometry mode
-                // me.onEditButtonClick();
+                onDrawEnd(wkt);
             } else if (me.currentDrawLayerId) {
                 me.openFeatureCRUDWithWkt(me.currentDrawLayerId, me.currentDrawLayerName, wkt);
             }
+        });
+
+        // finishDrawing() called with too few points → OL fires drawabort, not drawend
+        drawInteraction.on('drawabort', function() {
+            Ext.Toast({ message: 'Cần ít nhất 2 điểm để hoàn thành đường / vùng', timeout: 2000 });
         });
 
         mapPanel.map.addInteraction(drawInteraction);
@@ -1069,7 +1103,10 @@ Ext.define('gClient.controller.LayerController', {
             return;
         }
 
-        Ext.Toast({ message: 'Vẽ hình học mới trên bản đồ, nhấn đôi để hoàn thành', timeout: 3000 });
+        var msg = (drawType === 'Point')
+            ? 'Click vào bản đồ để vẽ điểm'
+            : 'Click để thêm điểm, nhấn nút ✔ Hoàn thành khi xong';
+        Ext.Toast({ message: msg, timeout: 3000 });
         this.startDraw(mapPanel, drawType, onWktReady);
     },
 
@@ -1124,12 +1161,22 @@ Ext.define('gClient.controller.LayerController', {
             me.layerStyleCRUDPanel = Ext.create('gClient.view.LayerStyleCRUD.LayerStyleCRUDPanel');
         }
 
+        // Pass cached style if already fetched (undefined = not yet fetched → panel fetches itself)
+        var cachedStyle = (layerItem.Id in me.layerStyles) ? me.layerStyles[layerItem.Id] : undefined;
+
         me.layerStyleCRUDPanel.getController().loadStyle(
             layerItem,
             gClient.app.getApiHost(),
             function(savedStyle) {
-                if (savedStyle) me.applyLayerStyle(layerItem.Id, savedStyle);
-            }
+                if (savedStyle) {
+                    me.applyLayerStyle(layerItem.Id, savedStyle);   // immediate visual update
+                    delete me.layerStyles[layerItem.Id];             // invalidate cache
+                    me.fetchAndCacheLayerStyle(layerItem.Id, function(freshStyle) {
+                        me.applyLayerStyle(layerItem.Id, freshStyle); // sync with server truth
+                    });
+                }
+            },
+            cachedStyle
         );
     },
 
@@ -1141,12 +1188,12 @@ Ext.define('gClient.controller.LayerController', {
 
         if (!mapPanel || !mapPanel.vectorSource) return;
 
-        var olStyle = me.makeOlStyle(style);
-        var ids     = me.layerFeatureIds[layerId] || [];
+         var ids = me.layerFeatureIds[layerId] || [];
         Ext.Array.each(ids, function(fid) {
-            if (fid === me.highlightedFeatureId) return;
             var olFeat = mapPanel.vectorSource.getFeatureById(fid);
-            if (olFeat) olFeat.setStyle(olStyle);
+            if (!olFeat) return;
+            var geomType = olFeat.getGeometry() ? olFeat.getGeometry().getType() : null;
+            olFeat.setStyle(me.makeOlStyle(style, geomType));
         });
     },
 

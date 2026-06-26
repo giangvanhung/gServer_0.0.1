@@ -416,13 +416,11 @@ Ext.define('gClient.view.EditLayer.EditLayerController', {
         });
 
         interaction.on('drawend', function(e) {
-            // Convert drawn geometry to WKT text
             var wkt = new ol.format.WKT().writeFeature(e.feature, {
                 dataProjection: 'EPSG:4326',
                 featureProjection: me.olMap.getView().getProjection()
             });
 
-            // Flag prevents the singleclick handler from firing after a Point draw
             me.drawJustEnded = true;
             setTimeout(function() {
                 if (me.drawSource) me.drawSource.clear();
@@ -432,10 +430,15 @@ Ext.define('gClient.view.EditLayer.EditLayerController', {
             me.stopDraw();
 
             if (onDrawEnd) {
-                onDrawEnd(wkt);                              // ← update-geometry mode
+                onDrawEnd(wkt);
             } else if (me.currentLayerId) {
                 me.openFeatureCRUDWithWkt(me.currentLayerId, me.currentLayerName, wkt);
             }
+        });
+
+        // finishDrawing() called with too few points → OL fires drawabort instead of drawend
+        interaction.on('drawabort', function() {
+            Ext.toast({ message: 'Cần ít nhất 2 điểm để hoàn thành đường / vùng', timeout: 2000 });
         });
 
         me.olMap.addInteraction(interaction);
@@ -463,7 +466,10 @@ Ext.define('gClient.view.EditLayer.EditLayerController', {
             Ext.toast({ message: 'Bản đồ chưa sẵn sàng', timeout: 2000 });
             return;
         }
-        Ext.toast({ message: 'Vẽ hình học mới trên bản đồ, nhấn đôi để hoàn thành', timeout: 3000 });
+        var msg = (drawType === 'Point')
+            ? 'Click vào bản đồ để vẽ điểm'
+            : 'Click để thêm điểm, nhấn nút ✔ Hoàn thành khi xong';
+        Ext.toast({ message: msg, timeout: 3000 });
         this.startDraw(drawType, onWktReady);
     },
 

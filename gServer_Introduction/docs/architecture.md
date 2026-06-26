@@ -4,141 +4,127 @@
 
 ```mermaid
 graph TB
-    subgraph FE["Frontend — gClient (Node.js / webpack)"]
-        EXT[ExtJS 8<br/>MVC · Grid · Store · Controller]
-        OL[OpenLayers<br/>Map · VectorLayer · WKT]
-        EXT <-->|drawWktOnMap| OL
+    subgraph FE["FRONTEND — gClient (trình duyệt)"]
+        direction LR
+        E1["ExtJS 8 Modern\nMVC · Grid · Store · Controller"]
+        E2["OpenLayers 8\nol.Map · VectorSource · WKT"]
+        E1 <-->|"drawWktOnMap(wkt, id, style)"| E2
     end
 
-    subgraph BE["Backend — gServer (IIS Express / WCF)"]
-        SVC[".svc Endpoint<br/>LayerService · LayerStyleService"]
-        BLL["Bussines Layer<br/>Validate · BoundingBox · Kiểm tra ràng buộc"]
-        REPO["Repositories<br/>SqlCommand · DataReader"]
-        SVC --> BLL --> REPO
+    subgraph BE["BACKEND — gServer (IIS Express :52106)"]
+        direction LR
+        B1[".svc Endpoint\nWCF webHttpBinding"]
+        B2["Services/\nParse · catch exception"]
+        B3["Bussines/\nLogic · BoundingBox"]
+        B4["Repositories/\nSQL thuần ADO.NET"]
+        B1 --> B2 --> B3 --> B4
     end
 
-    subgraph DB["Database — SQL Server 2016+"]
-        TBL["LAYERS · FEATURES · LAYERSTYLE<br/>geometry column · SRID 4326"]
+    subgraph DB["DATABASE — SQL Server 2016+"]
+        D1["LAYERS (metadata)"]
+        D2["FEATURES (geometry + properties)"]
+        D3["LAYERSTYLE (fill · stroke · icon)"]
     end
 
-    FE -->|"HTTP GET/POST/PUT/DELETE JSON"| BE
-    BE -->|"ADO.NET"| DB
-    DB -->|"WKT / ResultSet"| BE
-    BE -->|"JSON ServiceResult<T>"| FE
+    FE  -->|"HTTP GET/POST/PUT/DELETE — JSON"| BE
+    BE  -->|"ADO.NET SqlCommand"| DB
+    DB  -->|"WKT · ResultSet"| BE
+    BE  -->|"ServiceResult&lt;T&gt; JSON"| FE
 ```
 
-## Kiến trúc nội bộ gServer
+---
 
-Mỗi tầng chỉ biết về tầng kề dưới nó:
+## Kiến trúc nội bộ Backend
+
+Mỗi tầng chỉ biết về tầng kề dưới — không có phụ thuộc ngược.
 
 ```mermaid
 graph LR
-    A[HTTP Request] --> B[.svc\nWCF host]
-    B --> C[Services/\nParse ID · catch exception]
-    C --> D[Bussines/\nValidate · nghiệp vụ]
-    D --> E[Repositories/\nSQL thuần]
-    E --> F[(SQL Server)]
+    A["HTTP Request"] --> B[".svc\nWCF host"]
+    B --> C["Services/\nparse string→int\ncatch exception"]
+    C --> D["Bussines/\nvalidate · nghiệp vụ\nbounding box"]
+    D --> E["Repositories/\nSQL thuần\nQueryHelper async"]
+    E --> F[("SQL Server\nSpatial")]
+    F --> E --> D --> C --> B --> G["JSON Response\nServiceResult&lt;T&gt;"]
 ```
 
 | Tầng | Thư mục | Trách nhiệm |
 |---|---|---|
-| Interface | `IServices/` | Khai báo WCF contract (`[ServiceContract]`, `[WebGet]`, `[WebInvoke]`) |
-| Service | `Services/` | Parse string ID → int, gọi BLL, bắt exception cấp cao |
-| Business | `Bussines/` | Validate input, kiểm tra nghiệp vụ, tính bounding box |
-| Repository | `Repositories/` | SQL thuần qua `QueryHelper` — biết về DB, không biết về HTTP |
-| Model | `Models/` | Entity, DTO, request/response payload |
-| Helper | `Helper/` | DB connection, async SQL execution, log4net wrapper |
+| **WCF Host** | `LayerService.svc` | Route HTTP vào đúng interface method |
+| **Interface** | `IServices/` | `[ServiceContract]` · `[WebGet]` · `[WebInvoke]` · UriTemplate |
+| **Service** | `Services/` | Parse `string → int`, gọi BLL, catch exception cấp cao |
+| **Business** | `Bussines/` | Validate input, kiểm tra trùng tên, tính `BoundingBox` (NTS) |
+| **Repository** | `Repositories/` | SQL thuần — INSERT / SELECT / UPDATE / DELETE qua `QueryHelper` |
+| **Model** | `Models/` | Entity, DTO, request payload, `ServiceResult<T>` |
+| **Helper** | `Helper/` | `QueryHelper` (async ADO.NET), `LogHelper` (log4net), `ConnectionString` |
 
-## Cấu trúc thư mục chi tiết
+---
 
-```
-gServer_0.0.1/
-├── LayerService.svc              ← WCF host: LayerService
-├── LayerStyle.svc                ← WCF host: LayerStyleService
-├── Web.config                    ← Binding, connection string, log4net
-├── Global.asax.cs                ← CORS headers toàn cục
-│
-├── IServices/
-│   ├── ILayerService.cs          ← 13 operation contract
-│   └── ILayerStyleService.cs     ← 7 operation contract
-│
-├── Services/
-│   ├── LayerService.cs           ← Triển khai ILayerService
-│   ├── LayerStyleService.cs      ← Triển khai ILayerStyleService
-│   └── WMSService.cs
-│
-├── Bussines/
-│   ├── LayerBLL.cs               ← Nghiệp vụ Layer + Feature
-│   └── LayerStyleBLL.cs          ← Nghiệp vụ LayerStyle
-│
-├── Repositories/
-│   ├── LayerRepository.cs        ← SQL bảng LAYERS + FEATURES
-│   └── LayerStyleRepository.cs   ← SQL bảng LAYERSTYLE
-│
-├── Models/
-│   ├── Layer.cs                  ← Entity đầy đủ
-│   ├── LayerListDto.cs           ← DTO danh sách (Id, Name, LayerType, IsVisible)
-│   ├── LayerSaveDto.cs           ← DTO tạo/cập nhật
-│   ├── LayerStyle.cs             ← Entity style (fill, stroke, icon)
-│   ├── Feature.cs                ← Đối tượng không gian
-│   ├── FeatureRequest.cs         ← Payload ghi (GeomWkt + Properties)
-│   ├── FeatureCollection.cs      ← Danh sách Feature + BoundingBox
-│   ├── FeatureInfoCollection.cs  ← Danh sách Feature (chỉ properties)
-│   ├── FeatureBatchRequest.cs    ← { featureIds: [...] }
-│   ├── IdentifyRequest.cs        ← { lon, lat }
-│   ├── Envelope.cs               ← Bounding box (MinLat/MaxLat/MinLon/MaxLon)
-│   ├── Geometry.cs               ← Wrapper WKT + SRID
-│   ├── GeoJsonModels.cs          ← GeoJSON serialize
-│   └── ServiceResult.cs          ← { Success, Message, Data<T> }
-│
-└── Helper/
-    ├── QueryHelper.cs            ← ExecuteNonQuery/Scalar/Reader (async)
-    ├── ConnectHelper.cs          ← Mở SqlConnection từ config
-    ├── ConnectionString.cs       ← Đọc "geoDB" từ connectionStrings
-    └── LogHelper.cs              ← LogInfo / LogError / LogWarn (log4net)
+## Kiến trúc nội bộ Frontend
+
+```mermaid
+graph TD
+    APP["Application.js\ngetApiHost() → :52106"]
+    APP --> LC
+
+    LC["LayerController.js\nExt.app.Controller — trung tâm điều phối"]
+
+    LC --> LP["LayerPanel\nhbox Layout: Layers | Map | Props"]
+    LC --> OL["ol.Map\nVectorSource · VectorLayer"]
+
+    LP --> LG["Ext.grid.Grid\n(mỗi layer 1 grid riêng)"]
+    LG --> FS["FeatureStore\nREST proxy → /layers/id/features"]
+    LG --> CC["CheckColumn\ncheckchange → handleFeatureToggle"]
+    LG --> IT["itemtap → onFeatureRowTap"]
+
+    LC --> SC["LayerStyleCRUDPanel\nfloated modal — chỉnh màu sắc"]
+    LC --> FP["Feature Properties Panel\nhidden panel — hiện khi tap row"]
+    LC --> ED["EditLayer Page\nthêm/sửa layer + vẽ geometry lên map"]
 ```
 
-## Chuẩn response — ServiceResult\<T\>
+### Trạng thái nội bộ LayerController
 
-Mọi endpoint đều trả về `ServiceResult<T>` để frontend xử lý đồng nhất:
-
-```csharp
-public class ServiceResult<T>
-{
-    public bool    Success { get; set; }
-    public string  Message { get; set; }
-    public T       Data    { get; set; }
-}
-```
-
-```json
-{
-  "Success": true,
-  "Message": "Tạo lớp bản đồ mới thành công!",
-  "Data": { "Id": 5, "Name": "Điểm dân cư", "LayerType": "POINT" }
-}
-```
-
-!!! info "Các endpoint trả kiểu khác"
-    Một số endpoint trả thẳng `Feature`, `FeatureCollection`, `FeatureInfoCollection` (không bọc ServiceResult) để đơn giản hóa xử lý phía client.
-
-## Giao tiếp Frontend ↔ Backend
-
-| Endpoint | Method | Mô tả |
+| Property | Kiểu | Vai trò |
 |---|---|---|
-| `/LayerService.svc/layers` | GET | Lấy danh sách layer |
-| `/LayerService.svc/layers` | POST | Tạo layer mới |
-| `/LayerService.svc/layers/{Id}` | PUT | Cập nhật layer |
-| `/LayerService.svc/layers/{Id}` | DELETE | Xóa layer |
-| `/LayerService.svc/layers/{layerId}/features` | GET | Lấy features (chỉ properties) |
-| `/LayerService.svc/layers/{layerId}/features` | POST | Thêm feature |
-| `/LayerService.svc/features/{id}` | GET | Lấy feature đầy đủ |
-| `/LayerService.svc/features/{id}` | PUT | Cập nhật feature |
-| `/LayerService.svc/features/{id}` | DELETE | Xóa feature |
-| `/LayerService.svc/features/{id}/geometry` | GET | Lấy WKT geometry |
-| `/LayerService.svc/layers/{layerId}/features/import` | POST | Import hàng loạt |
-| `/LayerService.svc/layers/{layerId}/features-batch` | POST | Lấy geometry theo ID list |
-| `/LayerService.svc/identify` | POST | Identify theo lon/lat |
-| `/LayerStyle.svc/layerstyles` | GET/POST | Danh sách / tạo style |
-| `/LayerStyle.svc/layerstyles/{id}` | GET/PUT/DELETE | Chi tiết / sửa / xóa style |
-| `/LayerStyle.svc/layers/{layerId}/style` | GET/DELETE | Style của layer |
+| `layerFeaturesCache` | `{ layerId: {features, bbox} }` | Cache WKT + bbox sau lần load đầu |
+| `layerStyles` | `{ layerId: obj \| null \| undefined }` | Cache style — `undefined`=chưa fetch, `null`=không có style |
+| `layerToggleState` | `{ layerId: bool }` | Trạng thái on/off toàn bộ layer (eye toggle) |
+| `layerFeatureIds` | `{ layerId: [id…] }` | Danh sách feature ID đang hiển thị trên map |
+| `hiddenFeatureIds` | `{ layerId: { featureId: true } }` | Feature bị người dùng tắt riêng bằng checkbox |
+| `layerStores` | `{ layerId: Ext.data.Store }` | Store của từng layer grid |
+| `layerLoading` | `{ layerId: bool }` | Guard chống double-load đồng thời |
+| `currentPanelFeatureId` | `number \| null` | Feature đang mở properties panel |
+
+---
+
+## Tech Stack
+
+=== "Backend"
+
+    | Thư viện | Version | Dùng cho |
+    |---|---|---|
+    | .NET Framework | 4.5.1 | Runtime |
+    | WCF `webHttpBinding` | built-in | REST JSON — không phải SOAP |
+    | Newtonsoft.Json | 13.0.4 | Serialize/Deserialize JSON |
+    | NetTopologySuite | 1.15.3 | Tính BoundingBox từ WKT |
+    | GeoAPI | 1.7.5 | Phụ thuộc của NTS |
+    | log4net | 2.0.0 | Ghi log rolling file theo ngày |
+    | IIS Express | - | Dev host, port 52106 |
+
+=== "Frontend"
+
+    | Thư viện | Version | Dùng cho |
+    |---|---|---|
+    | ExtJS | 8 (Modern toolkit) | MVC · Grid · Form · Store · Controller |
+    | OpenLayers | 8.x | Bản đồ tương tác · WKT rendering |
+    | webpack | via Sencha Cmd | Bundle & hot reload |
+    | Material Theme | - | UI theme ExtJS |
+
+=== "Database"
+
+    | Thành phần | Chi tiết |
+    |---|---|
+    | SQL Server | 2016+ (yêu cầu Spatial feature) |
+    | Kiểu không gian | `GEOMETRY` (phẳng, SRID 4326) |
+    | Spatial Index | `GEOMETRY_AUTO_GRID` bbox toàn Việt Nam (100–110, 8–24) |
+    | Kết nối | ADO.NET thuần — `SqlConnection` / `SqlCommand` |

@@ -5,7 +5,8 @@ Ext.define('gClient.view.LayerStyleCRUD.LayerStyleCRUDViewController', {
     alias: 'controller.layerstylecrudvc',
 
     // Entry point — loads existing style for a layer (or blank form if none yet)
-    loadStyle: function(layerItem, apiHost, onAfterChange) {
+    // initialStyle: pass cached style object to skip server fetch; undefined = always fetch
+    loadStyle: function(layerItem, apiHost, onAfterChange, initialStyle) {
         var me   = this,
             view = me.getView();
 
@@ -14,6 +15,15 @@ Ext.define('gClient.view.LayerStyleCRUD.LayerStyleCRUDViewController', {
         view.onAfterChange   = onAfterChange || null;
         view.editingStyleId  = null;
         view.setTitle('Style: ' + layerItem.Name);
+
+        if (initialStyle !== undefined) {
+            // Use cached style — no server round-trip
+            if (initialStyle && initialStyle.Id) view.editingStyleId = initialStyle.Id;
+            if (initialStyle) me.fillForm(initialStyle);
+            else me.clearForm();
+            view.show();
+            return;
+        }
 
         Ext.Ajax.request({
             url: apiHost + '/LayerStyle.svc/layers/' + layerItem.Id + '/style',

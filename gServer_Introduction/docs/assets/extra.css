@@ -1,0 +1,55 @@
+/* ── Status badges ─────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+.badge-done   { background: #4caf50; color: #fff; }
+.badge-wip    { background: #ff9800; color: #fff; }
+.badge-plan   { background: #9e9e9e; color: #fff; }
+.badge-get    { background: #2196f3; color: #fff; }
+.badge-post   { background: #4caf50; color: #fff; }
+.badge-put    { background: #ff9800; color: #fff; }
+.badge-delete { background: #f44336; color: #fff; }
+
+/* ── Hero banner on index page ─────────────────────────────────────── */
+.hero {
+  background: linear-gradient(135deg, #3f51b5 0%, #1a237e 100%);
+  border-radius: 8px;
+  padding: 2rem 2.5rem;
+  color: #fff;
+  margin-bottom: 2rem;
+}
+.hero h1 { color: #fff; margin-top: 0; }
+.hero p  { opacity: 0.88; margin-bottom: 0; }
+
+/* ── Stack cards ───────────────────────────────────────────────────── */
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.stack-card {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+}
+.stack-card .icon { font-size: 2rem; }
+.stack-card h4   { margin: 0.4rem 0 0.2rem; }
+.stack-card p    { font-size: 0.82rem; opacity: 0.75; margin: 0; }
+
+/* ── Admonition icon tweaks ────────────────────────────────────────── */
+.md-typeset .admonition.done,
+.md-typeset details.done {
+  border-color: #4caf50;
+}
+.md-typeset .done > .admonition-title,
+.md-typeset .done > summary {
+  background-color: rgba(76,175,80,.1);
+}
