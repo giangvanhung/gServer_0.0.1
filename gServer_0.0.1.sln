@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.37328.6 d17.14
+VisualStudioVersion = 17.14.37328.6
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "gServer_0.0.1", "gServer_0.0.1\gServer_0.0.1.csproj", "{BDD555B3-5C02-4705-A00C-B4EF98190B08}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "gServerWeb", "gServerWeb\gServerWeb.csproj", "{E2675714-3C62-4431-9220-E79A1F5DBAA6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{BDD555B3-5C02-4705-A00C-B4EF98190B08}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BDD555B3-5C02-4705-A00C-B4EF98190B08}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BDD555B3-5C02-4705-A00C-B4EF98190B08}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E2675714-3C62-4431-9220-E79A1F5DBAA6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E2675714-3C62-4431-9220-E79A1F5DBAA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E2675714-3C62-4431-9220-E79A1F5DBAA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2675714-3C62-4431-9220-E79A1F5DBAA6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

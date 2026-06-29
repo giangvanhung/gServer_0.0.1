@@ -100,10 +100,18 @@ module.exports = async function (env) {
         static: {
           directory: path.resolve(__dirname, outputFolder),
           watch: isProd ? false : { ignored: ignoreFolders }
-        },        
+        },
         devMiddleware: {
           stats: stats
         },
+        proxy: isProd ? [] : [
+          {
+            context: ['/api'],
+            target: 'http://localhost:52106',
+            pathRewrite: { '^/api': '' },
+            changeOrigin: true
+          }
+        ],
         // inline: !isProd, // this was removed without replacement - https://github.com/webpack/webpack-dev-server/blob/master/migration-v4.md
       }
     }

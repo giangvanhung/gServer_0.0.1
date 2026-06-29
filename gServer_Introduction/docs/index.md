@@ -13,64 +13,67 @@ gồm **REST API .NET** ở backend, **ExtJS 8** ở frontend, và **OpenLayers*
 
 | Thành phần | Công nghệ | Vai trò |
 |---|---|---|
-| **gServer** | WCF .NET 4.5.1 · IIS Express | REST JSON API — Layer · Feature · Style |
-| **gClient** | ExtJS 8 (Modern) · webpack | UI điều khiển layer, quản lý feature |
+| **gServerWeb** | ASP.NET WebForms 4.5.1 · IIS Express | Entry point — Login, Auth, proxy `/api/*` |
+| **gServer** | WCF .NET 4.5.1 · IIS Express | REST JSON API — Layer · Feature · Style · Auth |
+| **gClient** | ExtJS 8 (Modern) · webpack | SPA — quản lý layer, feature, user, bản đồ |
 | **OpenLayers** | OL 8.x | Render WKT lên bản đồ tương tác |
-| **Database** | SQL Server 2016+ Spatial | Lưu `GEOMETRY` SRID 4326, Spatial Index |
+| **Database** | SQL Server 2016+ Spatial | Lưu `GEOMETRY` SRID 4326, Spatial Index, Users |
 
 ```mermaid
 graph LR
-    subgraph Client["Trình duyệt"]
-        FE["ExtJS 8\n(LayerController)"]
-        OL["OpenLayers\n(ol.Map)"]
-        FE <-->|drawWktOnMap| OL
+    subgraph Browser["Trình duyệt"]
+        FE["ExtJS 8\n:1962"]
+        OL["OpenLayers"]
+        FE <-->|WKT| OL
     end
-    subgraph Server["IIS Express :52106"]
-        WCF["WCF REST\nLayerService · LayerStyleService"]
-        BLL["Business Logic\n(validate · bbox)"]
-        REPO["Repository\n(ADO.NET)"]
-        WCF --> BLL --> REPO
+    subgraph ASP["gServerWeb :63329"]
+        Login["Login.aspx\n(entry point)"]
+        Proxy["WcfProxyHandler\n/api/*"]
+    end
+    subgraph WCF["gServer :52106"]
+        Auth["AuthService"]
+        Layer["LayerService\nFeatureService"]
     end
     subgraph DB["SQL Server"]
-        T["LAYERS\nFEATURES\nLAYERSTYLE"]
+        T["LAYERS · FEATURES\nLAYERSTYLE · USERS"]
     end
-    Client -->|"HTTP JSON"| Server
-    Server -->|"ADO.NET"| DB
+    Browser -->|"1. Login"| Login
+    Login -->|"2. cookie + redirect"| FE
+    FE -->|"3. /api/* Bearer token"| Proxy
+    Proxy --> Auth
+    Proxy --> Layer
+    Auth --> DB
+    Layer --> DB
 ```
 
 ## Khởi động nhanh
 
-=== "Windows (PowerShell)"
+```powershell
+# 1. WCF backend — IIS Express :52106
+#    Mở gServer_0.0.1 trong VS2022 → F5
 
-    ```powershell
-    # Backend — IIS Express port 52106
-    .\run-server.ps1
+# 2. ASP.NET entry — IIS Express :63329
+#    Mở gServerWeb trong VS2022 → F5
 
-    # Frontend — webpack-dev-server port 1962
-    .\run-client.ps1
+# 3. ExtJS client — webpack-dev-server :1962
+cd gClient_ExtJS\g-client
+npm start
 
-    # Tài liệu — MkDocs port 8000
-    .\serve-docs.ps1
-    ```
+# 4. Tài liệu — MkDocs :8000
+cd gServer_Introduction
+mkdocs serve
+```
 
-=== "Linux / WSL (Bash)"
-
-    ```bash
-    # Backend (cần chạy IIS Express trên Windows)
-    # Frontend
-    ./run-client.sh
-
-    # Tài liệu
-    ./serve-docs.sh
-    ```
+Sau đó mở: **`http://localhost:63329/Login.aspx`**
 
 ## Port mặc định
 
-| Service | Port | Base URL |
+| Service | Port | URL |
 |---|---|---|
-| gServer (IIS Express) | **52106** | `http://localhost:52106/LayerService.svc/` |
-| gClient (dev server) | **1962** | `http://localhost:1962` |
-| Tài liệu MkDocs | **8000** | `http://localhost:8000` |
+| gServerWeb — entry point | **63329** | `http://localhost:63329/Login.aspx` |
+| gServer WCF | **52106** | `http://localhost:52106` |
+| gClient ExtJS | **1962** | `http://localhost:1962` |
+| MkDocs | **8000** | `http://localhost:8000` |
 
 ## Cấu trúc kho mã
 

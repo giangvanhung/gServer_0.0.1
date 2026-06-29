@@ -15,7 +15,26 @@ Ext.define('gClient.view.main.MainViewController', {
 	},
 
 	onMenuDataLoad: function(store){
+		this._filterMenuByRole(store);
 		this.mainRoute(Ext.util.History.getHash());
+	},
+
+	_filterMenuByRole: function(store) {
+		var role     = gClient.util.Auth.getRole() || 'user';
+		var toRemove = [];
+		store.getRootNode().cascadeBy(function(node) {
+			if (!node.isRoot()) {
+				var roles = node.get('roles');
+				if (roles && roles.length > 0 && Ext.Array.indexOf(roles, role) < 0) {
+					toRemove.push(node);
+				}
+			}
+		});
+		Ext.each(toRemove, function(node) {
+			if (node.parentNode) {
+				node.parentNode.removeChild(node);
+			}
+		});
 	},
 
 	mainRoute: function (xtype) {
@@ -76,8 +95,7 @@ Ext.define('gClient.view.main.MainViewController', {
 	},
 
 	onBottomViewlogout: function () {
-		localStorage.setItem("LoggedIn", false);
-		this.getView().destroy();
-		Ext.Viewport.add([{ xtype: 'loginview'}]);
+		// Auth.clear() tự redirect về loginUrl (Login.aspx của ASP.NET)
+		gClient.util.Auth.clear();
 	}
 });

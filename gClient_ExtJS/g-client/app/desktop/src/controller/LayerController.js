@@ -499,8 +499,8 @@ Ext.define('gClient.controller.LayerController', {
                 var rawData = Ext.decode(response.responseText).Data;
                 panel.removeAll();
 
-                // ── "Add Layer" toolbar at top ─────────────────────────────────
-                if (!panel.down('toolbar')) {
+                // ── "Add Layer" toolbar at top (admin only) ───────────────────
+                if (gClient.util.Auth.isAdmin() && !panel.down('toolbar')) {
                     panel.add({
                         xtype: 'toolbar',
                         docked: 'top',
@@ -532,23 +532,22 @@ Ext.define('gClient.controller.LayerController', {
                     });
                     me.layerEyeBtns[layerItem.Id] = eyeBtn;
 
-                    panel.add({
-                        xtype: 'toolbar',
-                        // style: 'background:#f0f4fa;border-bottom:1px solid #030303;padding:2px 6px;',
-                        // width: '100%',
-                        // scrollable: true,
-                        items: [
-                            {
-                                xtype: 'panel',
-                                flex: 1,
-                                bodyPadding: 0,
-                                margin: 0,
-                                padding: 0,
-                                scrollable: 'x',  // ← Scroll ngang
-                                html: '<span style="font-weight:600;color:#1d3461;font-size:12px;line-height:28px;white-space:nowrap;display:inline-block;padding-right:10px;">'
-                                    + Ext.String.htmlEncode(layerItem.Name) + '</span>'
-                            },
-                            eyeBtn,
+                    var toolbarItems = [
+                        {
+                            xtype: 'panel',
+                            flex: 1,
+                            bodyPadding: 0,
+                            margin: 0,
+                            padding: 0,
+                            scrollable: 'x',
+                            html: '<span style="font-weight:600;color:#1d3461;font-size:12px;line-height:28px;white-space:nowrap;display:inline-block;padding-right:10px;">'
+                                + Ext.String.htmlEncode(layerItem.Name) + '</span>'
+                        },
+                        eyeBtn
+                    ];
+
+                    if (gClient.util.Auth.isAdmin()) {
+                        toolbarItems.push(
                             {
                                 xtype: 'button',
                                 iconCls: 'x-fa fa-pencil-alt',
@@ -578,7 +577,12 @@ Ext.define('gClient.controller.LayerController', {
                                 style: 'color:#ff4d4f;',
                                 handler: function() { me.onLayerDeleteClick(layerItem); }
                             }
-                        ]
+                        );
+                    }
+
+                    panel.add({
+                        xtype: 'toolbar',
+                        items: toolbarItems
                     });
 
                     var layerGrid = Ext.create('Ext.grid.Grid', {
@@ -902,6 +906,8 @@ Ext.define('gClient.controller.LayerController', {
     // ─── DRAW TOOLBAR ───────────────────────────────────────────────────────────
 
     createDrawToolbar: function(mapPanel) {
+        if (!gClient.util.Auth.isAdmin()) return;
+
         var me = this;
 
         // Defer until OL has rendered its DOM

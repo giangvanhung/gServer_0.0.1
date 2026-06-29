@@ -14,7 +14,7 @@ Ext.define('gClient.view.home.HomeViewModel', {
             fields: ['time', 'action'],
             proxy: {
                 type: 'ajax',
-                url: 'http://localhost:52106/LayerService.svc/Logs/Recent',
+                url: '/api/LayerService.svc/Logs/Recent',
                 reader: {
                     type: 'json'
                 }

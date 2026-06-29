@@ -87,13 +87,25 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Create_LayerStyles_Table.sql" />
+    <Content Include="Create_Tables.sql" />
+    <Content Include="Create_Users_Table.sql" />
     <Content Include="Global.asax" />
     <Content Include="LayerService.svc" />
     <Content Include="LayerStyle.svc" />
+    <Content Include="AuthService.svc" />
+    <Content Include="UserManagementService.svc" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bussines\LayerBLL.cs" />
+    <Compile Include="Helper\PasswordHelper.cs" />
+    <Compile Include="Helper\TokenHelper.cs" />
+    <Compile Include="Models\AuthModels.cs" />
+    <Compile Include="IServices\IAuthService.cs" />
+    <Compile Include="IServices\IUserManagementService.cs" />
+    <Compile Include="Services\AuthService.cs" />
+    <Compile Include="Services\UserManagementService.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>

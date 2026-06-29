@@ -1,0 +1,139 @@
+<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Site.master.cs" Inherits="gServerWeb.SiteMaster" %>
+<%@ Register Src="~/Controls/Header.ascx"  TagPrefix="uc" TagName="Header"  %>
+<%@ Register Src="~/Controls/Sidebar.ascx" TagPrefix="uc" TagName="Sidebar" %>
+<%@ Register Src="~/Controls/Footer.ascx"  TagPrefix="uc" TagName="Footer"  %>
+
+<!DOCTYPE html>
+<html lang="vi">
+<head runat="server">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=10" />
+    <title><%: Page.Title %> - gServer GIS</title>
+
+    <!-- Font Awesome (icons cho sidebar/header) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+    <!-- OpenLayers (dùng cho trang Map) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.1.0/ol.css" />
+    <script src="https://cdn.jsdelivr.net/npm/ol@v10.1.0/dist/ol.js"></script>
+
+    <!-- Layout CSS -->
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body { height: 100%; font-family: Arial, sans-serif; background: #f0f2f5; }
+
+        /* ── App shell ─────────────────────────────────── */
+        .app-shell {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* ── Header ────────────────────────────────────── */
+        .app-header {
+            height: 50px;
+            background: #1e3a5f;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            flex-shrink: 0;
+            z-index: 100;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .app-header-brand   { display: flex; align-items: center; gap: 12px; }
+        .app-header-title   { font-size: 16px; font-weight: bold; letter-spacing: 0.5px; }
+        .app-header-user    { display: flex; align-items: center; gap: 8px; font-size: 13px; opacity: 0.9; }
+        .sidebar-toggle     { background: none; border: none; color: #fff; cursor: pointer; font-size: 18px; padding: 4px 8px; border-radius: 4px; }
+        .sidebar-toggle:hover { background: rgba(255,255,255,0.15); }
+
+        /* ── Body (sidebar + center) ────────────────────── */
+        .app-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* ── Sidebar ────────────────────────────────────── */
+        .app-sidebar {
+            width: 220px;
+            background: #222c3c;
+            color: #b0b8c5;
+            flex-shrink: 0;
+            overflow-y: auto;
+            transition: width 0.2s ease;
+        }
+        .app-sidebar.collapsed { width: 48px; }
+        .app-sidebar.collapsed .sidebar-label { display: none; }
+
+        .sidebar-menu { list-style: none; padding: 8px 0; }
+        .sidebar-item  { }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: #b0b8c5;
+            text-decoration: none;
+            font-size: 13px;
+            transition: background 0.15s;
+        }
+        .sidebar-link:hover  { background: #2d3d54; color: #fff; }
+        .sidebar-link.active { background: #1e3a5f; color: #fff; border-left: 3px solid #4a9eff; }
+        .sidebar-link i      { width: 18px; text-align: center; font-size: 15px; }
+
+        /* ── Center ─────────────────────────────────────── */
+        .app-center {
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Footer ─────────────────────────────────────── */
+        .app-footer {
+            height: 32px;
+            background: #1e3a5f;
+            color: rgba(255,255,255,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+    </style>
+
+    <!-- Trang con có thể thêm CSS riêng -->
+    <asp:ContentPlaceHolder ID="HeadContent" runat="server" />
+</head>
+<body>
+    <form runat="server">
+        <asp:ScriptManager runat="server" />
+
+        <div class="app-shell">
+
+            <uc:Header runat="server" />
+
+            <div class="app-body">
+                <uc:Sidebar runat="server" />
+
+                <main class="app-center">
+                    <asp:ContentPlaceHolder ID="MainContent" runat="server" />
+                </main>
+            </div>
+
+            <uc:Footer runat="server" />
+
+        </div>
+    </form>
+
+    <script>
+        function toggleSidebar() {
+            document.getElementById('appSidebar').classList.toggle('collapsed');
+        }
+    </script>
+</body>
+</html>

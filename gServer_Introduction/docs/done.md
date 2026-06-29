@@ -4,6 +4,21 @@ Danh sách tất cả tính năng đã implement trong hệ thống.
 
 ---
 
+## ASP.NET — gServerWeb
+
+### Authentication (entry point)
+
+- [x] `Login.aspx` — form đăng nhập với SHA-256 + salt validate DB
+- [x] `FormsAuthentication` ticket (session cookie, 8h)
+- [x] Generate HMAC-SHA256 token (cùng secret với WCF) sau khi login
+- [x] Set cookie `gserver_auth` (non-HttpOnly) chứa `base64(JSON{token,username,role,fullName})`
+- [x] Redirect sang ExtJS kèm `?loginUrl=` để ExtJS biết địa chỉ quay lại
+- [x] `Home.aspx` — guard redirect: chưa login → `Login.aspx`, đã login → ExtJS
+- [x] `WcfProxyHandler` — proxy `/api/*` → WCF :52106 (GET/POST/PUT/DELETE + body)
+- [x] `Helpers/TokenHelper.cs` — HMAC token generation dùng chung với WCF
+
+---
+
 ## Backend — gServer
 
 ### Kiến trúc & Infrastructure
@@ -60,9 +75,24 @@ Danh sách tất cả tính năng đã implement trong hệ thống.
 ### Kiến trúc
 
 - [x] ExtJS 8 Modern toolkit + Material theme
-- [x] `Application.js` với `getApiHost()` tập trung
+- [x] `Application.js` — đọc `loginUrl` query param, `initFromCookie()`, redirect về ASP.NET nếu chưa auth
 - [x] `LayerController.js` — single controller điều phối toàn bộ
 - [x] Layout trang chính: hbox `[Layers | Map | Properties Panel]`
+
+### Auth & Phân quyền
+
+- [x] `util/Auth.js` — singleton: `initFromCookie()`, `save()`, `restore()`, `clear()`, `getRole()`
+- [x] Cookie `gserver_auth` → parse base64 JSON → lưu vào `localStorage` → xóa cookie
+- [x] `Ext.Ajax.setDefaultHeaders({ Authorization: 'Bearer token' })` tự động mọi request
+- [x] Logout → `Auth.clear()` → xóa localStorage + cookie → redirect `loginUrl` (Login.aspx)
+- [x] `menu.json` — thêm `roles[]` mỗi item, item "Người dùng" chỉ cho `admin`
+- [x] `MainViewController._filterMenuByRole()` — lọc menu theo role sau khi store load
+- [x] `LoginView.js` + `LoginViewController.js` — giữ lại nhưng không còn dùng (auth do ASP.NET quản lý)
+
+### Quản lý người dùng (Admin)
+
+- [x] `view/admin/UserManagementView.js` — grid với tbar Add/Search, cột role/status có màu
+- [x] `view/admin/UserManagementViewController.js` — CRUD: loadUsers, onAdd, onEdit, onDelete, dialog form
 
 ### Bản đồ OpenLayers
 
@@ -130,3 +160,4 @@ Danh sách tất cả tính năng đã implement trong hệ thống.
 - [x] Luồng dữ liệu (sequence diagram)
 - [x] Cơ chế nâng cao (style cache, hiddenFeatureIds, batch)
 - [x] Script khởi động (`run-server`, `run-client`, `serve-docs`)
+- [x] **`build-deploy.md`** — hướng dẫn dev setup, production build, IIS deploy, luồng auth, troubleshooting

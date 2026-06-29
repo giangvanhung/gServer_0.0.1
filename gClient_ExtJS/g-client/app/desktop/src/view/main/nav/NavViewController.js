@@ -14,5 +14,9 @@ Ext.define('gClient.view.main.nav.NavViewController', {
 				return;
 		}
 		this.fireViewEvent("select", node);
+	},
+
+	onBottomViewlogout: function () {
+		gClient.util.Auth.clear();
 	}
 });

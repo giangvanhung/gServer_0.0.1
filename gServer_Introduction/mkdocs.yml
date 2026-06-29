@@ -44,6 +44,8 @@ nav:
   - Frontend (gClient):
     - Kiến trúc & Component: frontend.md
     - Cơ chế nâng cao: frontend-advanced.md
+  - Tổng hợp kiến thức: concepts.md
+  - Build & Triển khai: build-deploy.md
   - Đã hoàn thành: done.md
 
 markdown_extensions:
