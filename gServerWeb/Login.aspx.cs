@@ -71,14 +71,11 @@ namespace gServerWeb
             Response.Cookies.Add(authCookie);
 
             // 3. Redirect sang ExtJS, kèm loginUrl để ExtJS biết redirect lại khi hết hạn
-            var extJsUrl   = ConfigurationManager.AppSettings["ExtJsBaseUrl"] ?? "http://localhost:1962";
-            var loginUrl   = Request.Url.GetLeftPart(UriPartial.Authority) + "/Login.aspx";
-            var returnUrl  = Request.QueryString["returnUrl"];
-
+            var returnUrl = Request.QueryString["returnUrl"];
             if (!string.IsNullOrEmpty(returnUrl))
                 Response.Redirect(Uri.UnescapeDataString(returnUrl));
             else
-                Response.Redirect(string.Format("{0}?loginUrl={1}", extJsUrl, Uri.EscapeDataString(loginUrl)));
+                Response.Redirect(ExtJsHelper.GetRedirectUrl(Request));
         }
 
         private void ShowError(string msg)

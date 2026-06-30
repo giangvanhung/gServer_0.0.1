@@ -42,9 +42,21 @@ namespace gServerWeb.Handlers
                 }
             }
 
-            var resp  = await _http.SendAsync(req);
-            var bytes = await resp.Content.ReadAsByteArrayAsync();
+            HttpResponseMessage resp;
+            try
+            {
+                resp = await _http.SendAsync(req);
+            }
+            catch (Exception ex)
+            {
+                // 502 = proxy reached nhưng WCF service không chạy / unreachable
+                context.Response.StatusCode  = 502;
+                context.Response.ContentType = "application/json";
+                context.Response.Write("{\"Success\":false,\"Message\":\"WCF unreachable: " + ex.Message + "\"}");
+                return;
+            }
 
+            var bytes = await resp.Content.ReadAsByteArrayAsync();
             context.Response.ContentType = resp.Content.Headers.ContentType?.MediaType ?? "application/json";
             context.Response.StatusCode  = (int)resp.StatusCode;
             context.Response.BinaryWrite(bytes);

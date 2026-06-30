@@ -7,7 +7,7 @@ Ext.define('gClient.Application', {
     defaultToken: 'homeview',
 
     config: {
-        apiHost: '/api'
+        apiHost: 'http://localhost:52106'
     },
 
     removeSplash: function () {

@@ -100,6 +100,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="build\**\*" />
+  </ItemGroup>
+  <ItemGroup>
     <Content Include="About.aspx" />
     <Content Include="Contact.aspx" />
     <Content Include="Default.aspx" />
@@ -130,6 +133,7 @@
       <DependentUpon>Register.aspx</DependentUpon>
     </Compile>
     <Compile Include="Handlers\WcfProxyHandler.cs" />
+    <Compile Include="Helpers\ExtJsHelper.cs" />
     <Compile Include="Helpers\TokenHelper.cs" />
     <Compile Include="Handlers\ExtJsProxyHandler.ashx.cs">
       <DependentUpon>ExtJsProxyHandler.ashx</DependentUpon>
@@ -230,6 +234,7 @@
   <ItemGroup>
     <Folder Include="App_Data\" />
     <Folder Include="wwwroot\" />
+    <Folder Include="build\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
