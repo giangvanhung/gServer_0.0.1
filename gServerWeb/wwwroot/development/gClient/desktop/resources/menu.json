@@ -1,0 +1,10 @@
+{
+  "leaf": false,
+  "children": [
+    { "text": "Home",        "iconCls": "x-fa fa-home",        "xtype": "homeview",       "leaf": true, "roles": ["admin","user"] },
+    { "text": "Edit Layers", "iconCls": "x-fa fa-table",       "xtype": "LayerView",      "leaf": true, "roles": ["admin"] },
+    { "text": "Map",         "iconCls": "x-fa fa-map",         "xtype": "mapPanel",       "leaf": true, "roles": ["admin","user"] },
+    { "text": "Layers",      "iconCls": "x-fa fa-layer-group", "xtype": "mapLayerDPHCC",  "leaf": true, "roles": ["admin","user"] },
+    { "text": "Người dùng",  "iconCls": "x-fa fa-users",       "xtype": "usermanagement", "leaf": true, "roles": ["admin"] }
+  ]
+}
